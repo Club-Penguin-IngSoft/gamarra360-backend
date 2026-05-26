@@ -38,6 +38,12 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.BAD_REQUEST, "Datos invalidos", mensaje, request.getRequestURI());
     }
 
+    @ExceptionHandler(ConflictoNegocioException.class)
+    public ResponseEntity<ErrorResponse> manejarConflicto(ConflictoNegocioException ex, HttpServletRequest request) {
+        log.error("Conflicto de negocio: {}", ex.getMessage());
+        return construir(HttpStatus.CONFLICT, "Conflicto", ex.getMessage(), request.getRequestURI());
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> manejarAcceso(AccessDeniedException ex, HttpServletRequest request) {
         log.error("Acceso no autorizado: {}", ex.getMessage());
