@@ -1,0 +1,32 @@
+# =============================================================================
+# Perfil 'local' — desarrollo en la máquina del developer.
+#
+# Apunta a una BD MySQL local (instalada con MySQL Workbench, Docker, XAMPP).
+# Carga data de prueba desde `data.sql` al iniciar.
+# =============================================================================
+
+spring:
+  datasource:
+    # Connection string a MySQL local en puerto 3306, BD `gamarra360`
+    url: jdbc:mysql://localhost:3306/gamarra360?useSSL=false&serverTimezone=America/Lima&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  sql:
+    init:
+      # En local cargamos data de prueba al arrancar. Cuando ya hay data en la
+      # BD, comentar `mode: always` o cambiar a `never` para no duplicar.
+      mode: always
+      data-locations: classpath:data.sql
+      continue-on-error: true   # ignorar errores si la data ya existe
+
+  jpa:
+    # En local mostramos las queries para debugging
+    show-sql: true
+    defer-datasource-initialization: true  # data.sql corre DESPUÉS de validate
+
+logging:
+  level:
+    com.gamarra360: DEBUG
+    org.hibernate.SQL: DEBUG

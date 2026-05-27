@@ -1,0 +1,39 @@
+# =============================================================================
+# Perfil 'aws' — producción/staging contra AWS RDS MySQL.
+#
+# Las credenciales se inyectan vía variables de entorno (NUNCA hardcodeadas).
+# En AWS EC2/Beanstalk, exportar:
+#   DB_URL=jdbc:mysql://<endpoint-rds>.amazonaws.com:3306/gamarra360?...
+#   DB_USER=<usuario_rds>
+#   DB_PASSWORD=<password_rds>
+#
+# AWS RDS MySQL 8.x requiere SSL en producción — ajustar la URL con
+# useSSL=true&requireSSL=true cuando esté habilitado el bundle RDS.
+# =============================================================================
+
+spring:
+  datasource:
+    url: jdbc:mysql://ingechow.clsfbay9pwbr.us-east-1.rds.amazonaws.com:3306/gamarra360?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima&characterEncoding=UTF-8&useUnicode=true&allowMultiQueries=true
+    username: adminadmin
+    password: 97W9nG3bzY8Nk6T
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Pool de conexiones tunneado para AWS RDS
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # NO ejecutar data.sql en AWS — la data real ya existe
+  sql:
+    init:
+      mode: never
+
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.gamarra360: INFO
+    org.hibernate.SQL: WARN
