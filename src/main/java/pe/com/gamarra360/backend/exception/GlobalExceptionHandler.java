@@ -44,6 +44,12 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.FORBIDDEN, "Acceso no autorizado", "No tienes permisos para realizar esta accion.", request.getRequestURI());
     }
 
+    @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
+    public ResponseEntity<ErrorResponse> manejarCuentaDesactivada(org.springframework.security.authentication.DisabledException ex, HttpServletRequest request) {
+        log.error("Cuenta desactivada: {}", ex.getMessage());
+        return construir(HttpStatus.FORBIDDEN, "Cuenta desactivada", "Tu cuenta de comerciante está pendiente de aprobación o ha sido desactivada por el administrador.", request.getRequestURI());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> manejarGeneral(Exception ex, HttpServletRequest request) {
         log.error("Error inesperado", ex);
