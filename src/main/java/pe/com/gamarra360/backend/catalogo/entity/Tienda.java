@@ -27,6 +27,7 @@ public class Tienda {
     private String informacion;
     private String foto;
     private Boolean verificada;
+    private Boolean activa;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_comerciante", insertable = false, updatable = false)
