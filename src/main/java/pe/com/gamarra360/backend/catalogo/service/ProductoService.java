@@ -1,5 +1,6 @@
 package pe.com.gamarra360.backend.catalogo.service;
 
+import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
 import pe.com.gamarra360.backend.catalogo.entity.Producto;
@@ -17,6 +18,14 @@ public interface ProductoService extends CrudService<Producto, Integer> {
 
     /** Lista todos los productos activos como DTO de respuesta (catálogo público). */
     List<ProductoResponse> listarTodosComoResponse();
+
+    /**
+     * Lista productos activos de forma paginada (server-side pagination).
+     *
+     * @param page índice 0-based de la página
+     * @param size número de elementos por página
+     */
+    PaginaResponse<ProductoResponse> listarPaginado(int page, int size);
 
     /** Lista los productos activos de una tienda específica. */
     List<ProductoResponse> listarPorTienda(Integer idTienda);
