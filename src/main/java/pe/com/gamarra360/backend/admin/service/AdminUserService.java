@@ -1,5 +1,6 @@
 package pe.com.gamarra360.backend.admin.service;
-
+import pe.com.gamarra360.backend.enums.RolEnum;
+import pe.com.gamarra360.backend.exception.DatosInvalidosException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -34,7 +35,17 @@ public class AdminUserService {
     // -------------------------------------------------------------------------
     // RF-11: Listar y filtrar usuarios
     // -------------------------------------------------------------------------
+    private RolEnum convertirRol(String rol) {
+        if (rol == null || rol.isBlank()) {
+            return null;
+        }
 
+        try {
+            return RolEnum.valueOf(rol.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new DatosInvalidosException("Rol inválido: " + rol);
+        }
+    }
     /**
      * Retorna una página de usuarios filtrados por rol, estado y búsqueda libre.
      * La consulta es construida dinámicamente en el repositorio mediante
@@ -42,8 +53,10 @@ public class AdminUserService {
      */
     @Transactional(readOnly = true)
     public Page<UsuarioResumenDTO> listarUsuarios(UsuarioFiltroDTO filtro, Pageable pageable) {
+        RolEnum rol = convertirRol(filtro.getRol());
+
         return usuarioRepository.buscarConFiltros(
-                filtro.getRol(),
+                rol,
                 filtro.getActivo(),
                 filtro.getQ(),
                 pageable

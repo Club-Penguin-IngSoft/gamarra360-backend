@@ -6,21 +6,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import pe.com.gamarra360.backend.enums.RolEnum;
 import pe.com.gamarra360.backend.usuario.entity.Usuario;
 
 import java.util.Optional;
 
-/**
- * AdminUsuarioRepository
- *
- * Repositorio de solo lectura (+escritura de estado) para el módulo de administración.
- */
 @Repository
 public interface AdminUsuarioRepository extends JpaRepository<Usuario, Integer> {
 
-    /**
-     * Búsqueda dinámica con filtros opcionales.
-     */
     @Query("""
         SELECT u FROM Usuario u
         WHERE (:rol IS NULL OR u.rol = :rol)
@@ -32,16 +25,12 @@ public interface AdminUsuarioRepository extends JpaRepository<Usuario, Integer> 
         ORDER BY u.usuarioId ASC
     """)
     Page<Usuario> buscarConFiltros(
-            @Param("rol") String rol,
+            @Param("rol") RolEnum rol,
             @Param("activo") Boolean activo,
             @Param("q") String q,
             Pageable pageable
     );
 
-    /**
-     * Carga el usuario junto con su historial de actividad.
-     * Como no existen los campos mapeados directamente en Usuario, delegamos al findById de Spring Data.
-     */
     default Optional<Usuario> findByIdConHistorial(Integer id) {
         return findById(id);
     }

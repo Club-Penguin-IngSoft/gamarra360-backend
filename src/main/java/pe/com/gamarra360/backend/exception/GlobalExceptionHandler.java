@@ -11,11 +11,20 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
-
+import org.springframework.security.core.AuthenticationException;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
-
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> manejarAutenticacion(AuthenticationException ex, HttpServletRequest request) {
+        log.error("Error de autenticacion: {}", ex.getMessage());
+        return construir(
+                HttpStatus.UNAUTHORIZED,
+                "Credenciales invalidas",
+                "Correo o contraseña incorrectos.",
+                request.getRequestURI()
+        );
+    }
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> manejarNoEncontrado(RecursoNoEncontradoException ex, HttpServletRequest request) {
         log.error("Recurso no encontrado: {}", ex.getMessage());
