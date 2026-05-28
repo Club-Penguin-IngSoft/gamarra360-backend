@@ -138,13 +138,13 @@ public class AdminVendorController {
      * La tienda queda inactiva, sus productos no son visibles en el catálogo,
      * pero el historial de pedidos y datos permanecen intactos.
      */
-    @PostMapping("/{comercianteId}/suspender")
-    public ResponseEntity<RespuestaAprobacionDTO> suspenderVendedor(
-            @PathVariable Integer comercianteId,
-            @RequestBody MotivoDTO motivo) {
-
-        return ResponseEntity.ok(adminVendorService.suspenderVendedor(comercianteId, motivo.getRazon()));
-    }
+//    @PostMapping("/{comercianteId}/suspender")
+//    public ResponseEntity<RespuestaAprobacionDTO> suspenderVendedor(
+//            @PathVariable Integer comercianteId,
+//            @RequestBody MotivoDTO motivo) {
+//
+//        return ResponseEntity.ok(adminVendorService.suspenderVendedor(comercianteId, motivo.getRazon()));
+//    }
 
     /**
      * GET /api/v1/admin/vendedores
