@@ -26,7 +26,7 @@ import java.util.List;
  *  - No requiere autenticación (catálogo público)
  */
 @RestController
-@RequestMapping("/productos")
+@RequestMapping("/api/v1/productos")
 public class ProductoController {
 
     private static final Logger log = LoggerFactory.getLogger(ProductoController.class);

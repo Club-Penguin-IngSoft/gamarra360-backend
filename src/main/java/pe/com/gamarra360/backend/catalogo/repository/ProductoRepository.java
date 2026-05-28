@@ -67,8 +67,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     List<Producto> buscarPorKeyword(@Param("q") String q);
 
     /**
-     * Detalle de un producto. Trae los datos básicos; las colecciones se
-     * cargan lazy y el servicio se encarga de inicializarlas según necesidad.
+     * Detalle de un producto. Aplica las mismas reglas de visibilidad del
+     * catálogo público para evitar exponer productos de tiendas/comerciantes
+     * no aprobados cuando se accede directamente por ID.
      */
     @Query("""
             SELECT p FROM Producto p
@@ -76,17 +77,26 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
             LEFT JOIN FETCH t.comerciante c
             WHERE p.idProducto = :id
               AND p.activo = true
+              AND t.verificada = true
+              AND c.verificado = true
+              AND c.activo = true
             """)
     Optional<Producto> findByIdActivo(@Param("id") Integer id);
 
     /**
      * Productos de una tienda específica (usado en perfil de tienda).
+     * Aplica las mismas reglas de visibilidad del catálogo público para no
+     * exponer productos de tiendas/comerciantes no aprobados.
      */
     @Query("""
-            SELECT p FROM Producto p
+            SELECT DISTINCT p FROM Producto p
             LEFT JOIN FETCH p.tienda t
+            LEFT JOIN t.comerciante c
             WHERE t.idTienda = :idTienda
               AND p.activo = true
+              AND t.verificada = true
+              AND c.verificado = true
+              AND c.activo = true
             """)
     List<Producto> findByTiendaId(@Param("idTienda") Integer idTienda);
 }

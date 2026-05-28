@@ -69,6 +69,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
+    /* ----------------------- 400: Lógica de negocio inválida ------------- */
+    @ExceptionHandler(DatosInvalidosException.class)
+    public ResponseEntity<ErrorRespuestaDto> manejarDatosInvalidos(
+            DatosInvalidosException ex,
+            HttpServletRequest request) {
+
+        log.warn("400 datos inválidos en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorRespuestaDto error = ErrorRespuestaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Datos inválidos")
+                .mensaje(ex.getMessage())
+                .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
     /* ----------------------- 500: Catch-all ------------------------------ */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorRespuestaDto> manejarGenerico(
