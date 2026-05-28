@@ -1,12 +1,17 @@
 package pe.com.gamarra360.backend.catalogo.controller;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-
-import pe.com.gamarra360.backend.catalogo.entity.Producto;
-import pe.com.gamarra360.backend.catalogo.service.ProductoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
+import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
+import pe.com.gamarra360.backend.catalogo.service.ProductoService;
+import pe.com.gamarra360.backend.security.UsuarioPrincipal;
 
 import java.util.List;
 
@@ -14,40 +19,75 @@ import java.util.List;
 @RequestMapping("/api/v1/productos")
 @Slf4j
 public class ProductoController {
+
     private final ProductoService service;
 
     public ProductoController(ProductoService service) {
         this.service = service;
     }
 
+    /** Lista todos los productos activos (público). */
     @GetMapping
-    public ResponseEntity<List<Producto>> listar() {
+    public ResponseEntity<List<ProductoResponse>> listar() {
         log.info("GET /api/v1/productos");
-        return ResponseEntity.ok(service.listar());
+        return ResponseEntity.ok(service.listarTodosComoResponse());
     }
 
+    /** Obtiene un producto por ID con detalle completo (público). */
     @GetMapping("/{id}")
-    public ResponseEntity<Producto> obtener(@PathVariable Integer id) {
+    public ResponseEntity<ProductoResponse> obtener(@PathVariable Integer id) {
         log.info("GET /api/v1/productos/{}", id);
-        return ResponseEntity.ok(service.obtener(id));
+        return ResponseEntity.ok(service.obtenerProductoResponse(id));
     }
 
+    /** Lista los productos activos de una tienda específica (RF-15). */
+    @GetMapping("/tienda/{idTienda}")
+    public ResponseEntity<List<ProductoResponse>> listarPorTienda(@PathVariable Integer idTienda) {
+        log.info("GET /api/v1/productos/tienda/{}", idTienda);
+        return ResponseEntity.ok(service.listarPorTienda(idTienda));
+    }
+
+    /**
+     * Crea un producto en la tienda del comerciante autenticado (RF-15).
+     * Valida que el comerciante esté verificado y que la tienda le pertenezca.
+     */
     @PostMapping
-    public ResponseEntity<Producto> crear(@RequestBody Producto request) {
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<ProductoResponse> crear(
+            @Valid @RequestBody ProductoRequest request,
+            Authentication auth) {
         log.info("POST /api/v1/productos");
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.crear(request));
+        Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.crearProducto(request, comercianteId));
     }
 
+    /**
+     * Edita un producto validando que pertenezca a la tienda del comerciante (RF-16).
+     * Retorna 403 si intenta editar un producto de otra tienda.
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<Producto> actualizar(@PathVariable Integer id, @RequestBody Producto request) {
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<ProductoResponse> actualizar(
+            @PathVariable Integer id,
+            @Valid @RequestBody ProductoRequest request,
+            Authentication auth) {
         log.info("PUT /api/v1/productos/{}", id);
-        return ResponseEntity.ok(service.actualizar(id, request));
+        Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        return ResponseEntity.ok(service.actualizarProducto(id, request, comercianteId));
     }
 
+    /**
+     * Eliminación lógica (activo=false). Retorna 409 si hay pedidos activos
+     * o cotizaciones en curso; 403 si es producto de otra tienda (RF-17).
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Integer id,
+            Authentication auth) {
         log.info("DELETE /api/v1/productos/{}", id);
-        service.eliminar(id);
+        Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        service.eliminarProducto(id, comercianteId);
         return ResponseEntity.noContent().build();
     }
 }

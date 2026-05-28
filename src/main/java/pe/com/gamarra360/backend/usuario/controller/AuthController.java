@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import pe.com.gamarra360.backend.usuario.dto.AuthResponse;
 import pe.com.gamarra360.backend.usuario.dto.LoginRequest;
 import pe.com.gamarra360.backend.usuario.dto.RegistroUsuarioRequest;
+import pe.com.gamarra360.backend.usuario.dto.GoogleLoginRequest;
+import pe.com.gamarra360.backend.usuario.dto.GoogleAuthResponse;
+import pe.com.gamarra360.backend.usuario.dto.GoogleRegistroRequest;
 import pe.com.gamarra360.backend.usuario.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -34,5 +37,17 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         log.info("POST /api/v1/auth/login");
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<GoogleAuthResponse> autenticarConGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        log.info("POST /api/v1/auth/google");
+        return ResponseEntity.ok(authService.autenticarConGoogle(request));
+    }
+
+    @PostMapping("/google/register")
+    public ResponseEntity<AuthResponse> registrarConGoogle(@Valid @RequestBody GoogleRegistroRequest request) {
+        log.info("POST /api/v1/auth/google/register");
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registrarConGoogle(request));
     }
 }
