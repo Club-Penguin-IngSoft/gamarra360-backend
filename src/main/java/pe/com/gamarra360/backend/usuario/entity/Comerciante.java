@@ -1,9 +1,11 @@
 package pe.com.gamarra360.backend.usuario.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 
 /**
  * Tabla `comerciantes`. Especialización de Usuario (herencia JOINED por usuario_id).
@@ -44,6 +46,4 @@ public class Comerciante extends Usuario {
     @OneToOne(mappedBy = "comerciante", fetch = FetchType.LAZY)
     @JsonIgnore
     private Tienda tienda;
-    public Comerciante() {
-    }
 }
