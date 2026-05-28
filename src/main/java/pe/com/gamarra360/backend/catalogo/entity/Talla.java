@@ -1,28 +1,28 @@
 package pe.com.gamarra360.backend.catalogo.entity;
 
+import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
-
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+/**
+ * Tabla `tallas`. Catálogo de tallas (S, M, L, XL, etc.).
+ */
 @Entity
 @Table(name = "tallas")
 @Getter
 @Setter
+@NoArgsConstructor
 public class Talla {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_talla")
     private Integer idTalla;
+
+    @Column(name = "talla")
     private String talla;
+
+    @Column(name = "activo")
     private Boolean activo;
-    @OneToMany(mappedBy = "tallaRef")
-    @JsonIgnore
-    private List<VarianteProducto> variantes = new ArrayList<>();
-    public Talla() { }
 }
