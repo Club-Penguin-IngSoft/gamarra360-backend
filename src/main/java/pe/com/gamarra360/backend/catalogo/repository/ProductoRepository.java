@@ -16,22 +16,24 @@ import java.util.Optional;
  *  - Catálogo público: solo productos activos de tiendas verificadas
  *  - Detalle por id: incluye variantes, imágenes, especificaciones
  *  - Búsqueda por keyword con LIKE (multi-campo)
- *
- * NOTA SOBRE RELEVANCIA: actualmente la lógica de scoring por relevancia vive
- * en el ProductoServiceImpl (Java in-memory). Cuando el volumen lo justifique,
- * se migrará a un MATCH AGAINST con FULLTEXT INDEX en MySQL.
  */
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Integer> {
 
+    // ── Derived queries (usadas por ProductoServiceImpl) ─────────────────────
+
+    List<Producto> findByIdTiendaAndActivoTrue(Integer idTienda);
+
+    List<Producto> findByActivoTrue();
+
+    // ── JPQL queries con filtros de visibilidad (CU-07, RF-20/RF-21) ─────────
+
     /**
      * Listado del catálogo público:
-     *  - producto.activo            = TRUE
-     *  - tienda.verificada          = TRUE
-     *  - comerciante.verificado     = TRUE
-     *  - usuario.activo             = TRUE
-     *
-     * Esto cubre RF-20/RF-21 (exclusión automática de vendedores no aprobados).
+     *  - producto.activo         = TRUE
+     *  - tienda.verificada       = TRUE
+     *  - comerciante.verificado  = TRUE
+     *  - comerciante.activo      = TRUE
      */
     @Query("""
             SELECT DISTINCT p FROM Producto p
@@ -46,9 +48,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
 
     /**
      * Búsqueda por keyword en nombre, descripción y nombre de tienda.
-     * El servicio aplica luego el scoring de relevancia y el ordenamiento.
-     *
-     * Insensible a mayúsculas (LOWER en ambos lados).
      */
     @Query("""
             SELECT DISTINCT p FROM Producto p
@@ -59,17 +58,15 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
               AND c.verificado = true
               AND c.activo = true
               AND (
-                LOWER(p.nombre)            LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(p.descripcion)    LIKE LOWER(CONCAT('%', :q, '%'))
+                LOWER(p.nombre)             LIKE LOWER(CONCAT('%', :q, '%'))
+                OR LOWER(p.descripcion)     LIKE LOWER(CONCAT('%', :q, '%'))
                 OR LOWER(t.nombreComercial) LIKE LOWER(CONCAT('%', :q, '%'))
               )
             """)
     List<Producto> buscarPorKeyword(@Param("q") String q);
 
     /**
-     * Detalle de un producto. Aplica las mismas reglas de visibilidad del
-     * catálogo público para evitar exponer productos de tiendas/comerciantes
-     * no aprobados cuando se accede directamente por ID.
+     * Detalle de un producto con reglas de visibilidad del catálogo público.
      */
     @Query("""
             SELECT p FROM Producto p
@@ -84,9 +81,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     Optional<Producto> findByIdActivo(@Param("id") Integer id);
 
     /**
-     * Productos de una tienda específica (usado en perfil de tienda).
-     * Aplica las mismas reglas de visibilidad del catálogo público para no
-     * exponer productos de tiendas/comerciantes no aprobados.
+     * Productos de una tienda específica con filtros de visibilidad.
      */
     @Query("""
             SELECT DISTINCT p FROM Producto p
@@ -98,5 +93,5 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
               AND c.verificado = true
               AND c.activo = true
             """)
-    List<Producto> findByTiendaId(@Param("idTienda") Integer idTienda);
+    List<Producto> findByTiendaIdConVisibilidad(@Param("idTienda") Integer idTienda);
 }
