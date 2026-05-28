@@ -57,7 +57,7 @@ public class VarianteProductoServiceImpl extends AbstractCrudService<VariantePro
         r.setSku(v.getSku());
         r.setStock(v.getStock());
         r.setDisponible(v.getDisponible());
-        r.setIdProducto(v.getIdProducto());
+        r.setIdProducto(v.getProducto() != null ? v.getProducto().getIdProducto() : null);
         return r;
     }
 }

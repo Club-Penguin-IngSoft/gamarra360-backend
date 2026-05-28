@@ -6,7 +6,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.PageRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ImagenRequest;
+import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
 import pe.com.gamarra360.backend.catalogo.entity.*;
@@ -76,6 +78,17 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
     @Override
     @Transactional(readOnly = true)
+    public PaginaResponse<ProductoResponse> listarPaginado(int page, int size) {
+        var pageable = PageRequest.of(page, size);
+        var resultado = productoRepository.findByActivoTrue(pageable);
+        List<ProductoResponse> contenido = resultado.getContent().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        return new PaginaResponse<>(contenido, page, resultado.getTotalPages(), resultado.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ProductoResponse> listarPorTienda(Integer idTienda) {
         return productoRepository.findByIdTiendaAndActivoTrue(idTienda).stream()
                 .map(this::toResponse)
@@ -97,7 +110,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
         if (!Boolean.TRUE.equals(comerciante.getVerificado())) {
             throw new DatosInvalidosException(
-                    "Tu cuenta de comerciante no esta verificada. Contacta al administrador.");
+                    "Tu cuenta de comerciante no está verificada. Contacta al administrador.");
         }
 
         if (comerciante.getIdTienda() == null
@@ -109,24 +122,24 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
                 .orElseThrow(() -> new RecursoNoEncontradoException("Tienda no encontrada"));
 
         if (!Boolean.TRUE.equals(tienda.getVerificada())) {
-            throw new DatosInvalidosException("La tienda no esta verificada para publicar productos.");
+            throw new DatosInvalidosException("La tienda no está verificada para publicar productos.");
         }
 
-        Set<Categoria> cats = resolverCategorias(request.getIdCategorias());
+        List<Categoria> cats = resolverCategorias(request.getIdCategorias());
 
         Producto producto = new Producto();
         producto.setNombre(request.getNombre());
         producto.setDescripcion(request.getDescripcion());
         producto.setPrecioBase(request.getPrecioBase());
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
-        producto.setIdTienda(request.getIdTienda());
+        producto.setTienda(tienda);
         producto.setActivo(true);
         producto.setCategorias(cats);
 
         Producto saved = productoRepository.save(producto);
-        List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), saved.getIdProducto());
+        List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), saved);
 
-        return buildResponse(saved, tienda.getNombreComercial(), new ArrayList<>(cats), savedImages, List.of());
+        return buildResponse(saved, tienda.getNombreComercial(), cats, savedImages, List.of());
     }
 
     @Override
@@ -141,12 +154,14 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         Comerciante comerciante = comercianteRepository.findById(comercianteId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Comerciante no encontrado"));
 
+        Integer tiendaIdProducto = producto.getIdTienda();
         if (comerciante.getIdTienda() == null
-                || !comerciante.getIdTienda().equals(producto.getIdTienda().longValue())) {
+                || tiendaIdProducto == null
+                || !comerciante.getIdTienda().equals(tiendaIdProducto.longValue())) {
             throw new AccessDeniedException("No tienes permiso para editar productos de otra tienda.");
         }
 
-        Set<Categoria> cats = resolverCategorias(request.getIdCategorias());
+        List<Categoria> cats = resolverCategorias(request.getIdCategorias());
 
         producto.setNombre(request.getNombre());
         producto.setDescripcion(request.getDescripcion());
@@ -155,15 +170,15 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         producto.setCategorias(cats);
 
         imagenProductoRepository.deleteAll(imagenProductoRepository.findByIdProducto(idProducto));
-        List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), idProducto);
+        List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), producto);
 
-        Tienda tienda = tiendaRepository.findById(producto.getIdTienda()).orElse(null);
+        Tienda tienda = producto.getTienda();
         List<VarianteProducto> variantes = varianteProductoRepository.findByIdProducto(idProducto);
 
         productoRepository.save(producto);
 
         return buildResponse(producto, tienda != null ? tienda.getNombreComercial() : null,
-                new ArrayList<>(cats), savedImages, variantes);
+                cats, savedImages, variantes);
     }
 
     @Override
@@ -174,8 +189,10 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         Comerciante comerciante = comercianteRepository.findById(comercianteId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Comerciante no encontrado"));
 
+        Integer tiendaIdProducto = producto.getIdTienda();
         if (comerciante.getIdTienda() == null
-                || !comerciante.getIdTienda().equals(producto.getIdTienda().longValue())) {
+                || tiendaIdProducto == null
+                || !comerciante.getIdTienda().equals(tiendaIdProducto.longValue())) {
             throw new AccessDeniedException("No tienes permiso para eliminar productos de otra tienda.");
         }
 
@@ -200,21 +217,21 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private Set<Categoria> resolverCategorias(List<Integer> ids) {
-        Set<Categoria> cats = new HashSet<>(categoriaRepository.findAllById(ids));
-        if (cats.size() != ids.size()) {
-            throw new DatosInvalidosException("Una o mas categorias no existen.");
+    private List<Categoria> resolverCategorias(List<Integer> ids) {
+        List<Categoria> cats = categoriaRepository.findAllById(ids);
+        if (new HashSet<>(cats).size() != ids.size()) {
+            throw new DatosInvalidosException("Una o más categorías no existen.");
         }
         return cats;
     }
 
-    private List<ImagenProducto> guardarImagenes(List<ImagenRequest> imagenes, Integer idProducto) {
+    private List<ImagenProducto> guardarImagenes(List<ImagenRequest> imagenes, Producto producto) {
         List<ImagenProducto> result = new ArrayList<>();
         for (ImagenRequest imgReq : imagenes) {
             ImagenProducto img = new ImagenProducto();
             img.setUrl(imgReq.getUrl());
             img.setEsPrincipal(Boolean.TRUE.equals(imgReq.getEsPrincipal()));
-            img.setIdProducto(idProducto);
+            img.setProducto(producto);
             result.add(imagenProductoRepository.save(img));
         }
         return result;
@@ -223,10 +240,9 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     private ProductoResponse toResponse(Producto p) {
         List<ImagenProducto> imgs = imagenProductoRepository.findByIdProducto(p.getIdProducto());
         List<VarianteProducto> vars = varianteProductoRepository.findByIdProducto(p.getIdProducto());
-        Tienda tienda = p.getIdTienda() != null
-                ? tiendaRepository.findById(p.getIdTienda()).orElse(null) : null;
+        Tienda tienda = p.getTienda();
         return buildResponse(p, tienda != null ? tienda.getNombreComercial() : null,
-                new ArrayList<>(p.getCategorias()), imgs, vars);
+                p.getCategorias(), imgs, vars);
     }
 
     private ProductoResponse buildResponse(Producto p, String nombreTienda,
@@ -264,8 +280,8 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setStock(v.getStock());
             d.setPrecioAjustado(v.getPrecioAjustado());
             d.setDisponible(v.getDisponible());
-            d.setIdTalla(v.getIdTalla());
-            d.setIdColor(v.getIdColor());
+            d.setIdTalla(v.getTalla() != null ? v.getTalla().getIdTalla() : null);
+            d.setIdColor(v.getColor() != null ? v.getColor().getIdColor() : null);
             return d;
         }).collect(Collectors.toList()));
 
