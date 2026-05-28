@@ -133,11 +133,10 @@ public class AuthService {
 
         RegistroUsuarioRequest registroRequest = new RegistroUsuarioRequest();
         registroRequest.setRol(request.getRol());
-        
-        if (request.getRol() == RolEnum.CLIENTE) {
-            registroRequest.setNombre(request.getNombres());
-            registroRequest.setApellido(request.getPrimerApellido());
-        } else if (request.getRol() == RolEnum.VENDEDOR) {
+        registroRequest.setNombres(request.getNombres());
+        registroRequest.setPrimerApellido(request.getPrimerApellido());
+
+        if (request.getRol() == RolEnum.VENDEDOR) {
             registroRequest.setRuc(request.getRuc());
             registroRequest.setRazonSocial(request.getRazonSocial());
         }
@@ -192,8 +191,8 @@ public class AuthService {
     private Usuario crearUsuarioPorRol(RegistroUsuarioRequest request) {
         if (request.getRol() == RolEnum.CLIENTE) {
             Cliente cliente = new Cliente();
-            cliente.setNombre(request.getNombre());
-            cliente.setApellido(request.getApellido());
+            cliente.setNombre(request.getNombres());
+            cliente.setApellido(request.getPrimerApellido());
             return cliente;
         }
         if (request.getRol() == RolEnum.VENDEDOR) {
