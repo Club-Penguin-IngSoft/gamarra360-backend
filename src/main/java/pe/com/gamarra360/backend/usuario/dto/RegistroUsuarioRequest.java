@@ -25,4 +25,5 @@ public class RegistroUsuarioRequest {
     private RolEnum rol;
     private String ruc;
     private String razonSocial;
+    private String tipoDocumento;
 }

@@ -11,10 +11,22 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+//    @ExceptionHandler(UsuarioNoRegistradoGoogleException.class)
+//    public ResponseEntity<?> handleGoogleNoUser(UsuarioNoRegistradoGoogleException ex) {
+//
+//        Map<String, Object> response = new HashMap<>();
+//        response.put("needsRegistration", true);
+//        response.put("email", ex.getEmail());
+//
+//        return ResponseEntity.ok(response);
+//    }
 
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> manejarNoEncontrado(RecursoNoEncontradoException ex, HttpServletRequest request) {
