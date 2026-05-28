@@ -45,6 +45,9 @@ public class Usuario {
     @Column(name = "proveedor_auth")
     private ProveedorAuth proveedorAuth;
 
+    @Column(name = "tipo_documento")
+    private String tipoDocumento;
+
     /**
      * Si `activo = false`, el usuario (y por lo tanto sus tiendas) NO deben
      * aparecer en el catálogo público.

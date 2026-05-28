@@ -23,6 +23,9 @@ public class RegistroUsuarioRequest {
     private String telefono;
     @NotNull
     private RolEnum rol;
+    private String nombre;
+    private String apellido;
     private String ruc;
     private String razonSocial;
+    private String tipoDocumento;
 }
