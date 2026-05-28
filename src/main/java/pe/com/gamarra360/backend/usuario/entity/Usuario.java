@@ -36,7 +36,8 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     @Column(name = "proveedor_auth")
     private ProveedorAuth proveedorAuth;
-
+    @Column(name = "tipo_documento")
+    private String tipoDocumento;
     public Usuario() {
     }
 }
