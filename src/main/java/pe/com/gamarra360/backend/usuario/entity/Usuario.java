@@ -1,4 +1,4 @@
-﻿package pe.com.gamarra360.backend.usuario.entity;
+package pe.com.gamarra360.backend.usuario.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
