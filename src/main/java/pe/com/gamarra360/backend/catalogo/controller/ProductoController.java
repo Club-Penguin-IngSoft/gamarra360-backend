@@ -7,7 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
 import pe.com.gamarra360.backend.catalogo.service.ProductoService;
@@ -15,9 +17,22 @@ import pe.com.gamarra360.backend.security.UsuarioPrincipal;
 
 import java.util.List;
 
+/**
+ * Controller REST del módulo `catalogo`.
+ *
+ * Endpoints (CU-07 + CU-08 + RF-15/16/17):
+ *  - GET    /api/v1/productos                    → catálogo público
+ *  - GET    /api/v1/productos/{id}               → detalle de producto
+ *  - GET    /api/v1/productos/tienda/{idTienda}  → productos de una tienda
+ *  - POST   /api/v1/productos                    → crear producto (VENDEDOR)
+ *  - PUT    /api/v1/productos/{id}               → editar producto (VENDEDOR)
+ *  - DELETE /api/v1/productos/{id}               → eliminar producto (VENDEDOR)
+ *
+ * Sigue las convenciones CLAUDE.md §5.
+ */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/productos")
-@Slf4j
 public class ProductoController {
 
     private final ProductoService service;
@@ -26,11 +41,18 @@ public class ProductoController {
         this.service = service;
     }
 
-    /** Lista todos los productos activos (público). */
+    /**
+     * Lista productos activos con paginación server-side (catálogo público).
+     *
+     * @param page página 0-based (default 0)
+     * @param size elementos por página (default 12, máx recomendado 500)
+     */
     @GetMapping
-    public ResponseEntity<List<ProductoResponse>> listar() {
-        log.info("GET /api/v1/productos");
-        return ResponseEntity.ok(service.listarTodosComoResponse());
+    public ResponseEntity<PaginaResponse<ProductoResponse>> listar(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "12") int size) {
+        log.info("GET /api/v1/productos?page={}&size={}", page, size);
+        return ResponseEntity.ok(service.listarPaginado(page, size));
     }
 
     /** Obtiene un producto por ID con detalle completo (público). */

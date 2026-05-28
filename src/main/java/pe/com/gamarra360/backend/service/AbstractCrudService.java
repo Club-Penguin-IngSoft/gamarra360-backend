@@ -9,6 +9,7 @@ import java.util.List;
 public abstract class AbstractCrudService<T, ID> implements CrudService<T, ID> {
     private final JpaRepository<T, ID> repository;
     private final String nombreRecurso;
+    
 
     protected AbstractCrudService(JpaRepository<T, ID> repository, String nombreRecurso) {
         this.repository = repository;
