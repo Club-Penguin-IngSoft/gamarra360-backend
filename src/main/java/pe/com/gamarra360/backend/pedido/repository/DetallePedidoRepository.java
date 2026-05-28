@@ -13,7 +13,7 @@ public interface DetallePedidoRepository extends JpaRepository<DetallePedido, Lo
     @Query("SELECT COUNT(dp) > 0 FROM DetallePedido dp " +
            "JOIN dp.pedido p " +
            "JOIN dp.varianteProducto vp " +
-           "WHERE vp.idProducto = :idProducto AND p.estado IN :estados")
+           "WHERE vp.producto.idProducto = :idProducto AND p.estado IN :estados")
     boolean existePedidoActivoPorProducto(@Param("idProducto") Integer idProducto,
                                           @Param("estados") List<EstadoPedido> estados);
 }
