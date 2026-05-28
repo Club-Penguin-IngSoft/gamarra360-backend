@@ -19,6 +19,9 @@ public class Comerciante extends Usuario {
     private Boolean verificado;
     @Column(name = "id_tienda")
     private Long idTienda;
+    private String estado;
+    @Column(name = "motivo_rechazo")
+    private String motivoRechazo;
 
     @OneToOne(mappedBy = "comerciante", fetch = FetchType.LAZY)
     @JsonIgnore
