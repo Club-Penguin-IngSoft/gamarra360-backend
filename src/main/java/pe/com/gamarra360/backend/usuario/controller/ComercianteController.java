@@ -52,10 +52,10 @@ public class ComercianteController {
         return ResponseEntity.ok(service.actualizar(id, request));
     }
 
-    @PutMapping("/{id}/aprobar")
+    @PatchMapping("/{id}/aprobar")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Comerciante> aprobar(@PathVariable Integer id) {
-        log.info("PUT /api/v1/comerciantes/{}/aprobar", id);
+        log.info("PATCH /api/v1/comerciantes/{}/aprobar", id);
         return ResponseEntity.ok(service.aprobar(id));
     }
 
