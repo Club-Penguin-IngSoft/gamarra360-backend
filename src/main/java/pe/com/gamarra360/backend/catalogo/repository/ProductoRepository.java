@@ -1,6 +1,8 @@
 package pe.com.gamarra360.backend.catalogo.repository;
 
 import pe.com.gamarra360.backend.catalogo.entity.Producto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,6 +27,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     List<Producto> findByIdTiendaAndActivoTrue(Integer idTienda);
 
     List<Producto> findByActivoTrue();
+
+    /** Versión paginada — usada por el catálogo público (server-side pagination). */
+    Page<Producto> findByActivoTrue(Pageable pageable);
 
     // ── JPQL queries con filtros de visibilidad (CU-07, RF-20/RF-21) ─────────
 

@@ -6,7 +6,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.PageRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ImagenRequest;
+import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
 import pe.com.gamarra360.backend.catalogo.entity.*;
@@ -72,6 +74,17 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         return productoRepository.findByActivoTrue().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginaResponse<ProductoResponse> listarPaginado(int page, int size) {
+        var pageable = PageRequest.of(page, size);
+        var resultado = productoRepository.findByActivoTrue(pageable);
+        List<ProductoResponse> contenido = resultado.getContent().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        return new PaginaResponse<>(contenido, page, resultado.getTotalPages(), resultado.getTotalElements());
     }
 
     @Override
