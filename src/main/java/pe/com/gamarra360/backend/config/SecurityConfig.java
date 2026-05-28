@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()  // preflight libre
                         .requestMatchers("/api/v1/auth/**", "/actuator/health", "/api/v1/tiendas/publico/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/productos/**").permitAll()  // catálogo público
+                        .requestMatchers(HttpMethod.GET, "/api/v1/productos", "/api/v1/productos/**").permitAll()  // catálogo público
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->
