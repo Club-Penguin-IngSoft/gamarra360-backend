@@ -11,7 +11,7 @@ public class AuthResponse {
     private Integer usuarioId;
     private String email;
     private String rol;
-
+    private boolean needsRegistration;
     public AuthResponse() {
     }
 
@@ -21,5 +21,15 @@ public class AuthResponse {
         this.usuarioId = usuarioId;
         this.email = email;
         this.rol = rol;
+        this.needsRegistration = false;
+    }
+
+    public AuthResponse(String token, Integer usuarioId, String email, String rol, boolean needsRegistration) {
+        this.token = token;
+        this.tipo = "Bearer";
+        this.usuarioId = usuarioId;
+        this.email = email;
+        this.rol = rol;
+        this.needsRegistration = needsRegistration;
     }
 }
