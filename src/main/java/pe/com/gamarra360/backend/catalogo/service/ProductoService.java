@@ -1,8 +1,8 @@
-package com.gamarra360.catalogo.service;
+package pe.com.gamarra360.backend.catalogo.service;
 
-import com.gamarra360.catalogo.dto.FiltrosCatalogoDto;
-import com.gamarra360.catalogo.dto.PagedResponse;
-import com.gamarra360.catalogo.dto.ProductoDto;
+import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
+import pe.com.gamarra360.backend.catalogo.dto.PagedResponse;
+import pe.com.gamarra360.backend.catalogo.dto.ProductoDto;
 
 import java.util.List;
 
@@ -30,7 +30,7 @@ public interface ProductoService {
      *
      * @param idProducto id del producto
      * @return DTO completo
-     * @throws com.gamarra360.exception.RecursoNoEncontradoException si no existe o está inactivo
+    * @throws pe.com.gamarra360.backend.exception.RecursoNoEncontradoException si no existe o está inactivo
      */
     ProductoDto obtenerPorId(Integer idProducto);
 

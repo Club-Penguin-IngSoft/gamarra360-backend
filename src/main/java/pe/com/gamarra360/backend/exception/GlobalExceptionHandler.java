@@ -1,4 +1,4 @@
-package com.gamarra360.exception;
+package pe.com.gamarra360.backend.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;

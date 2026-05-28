@@ -1,7 +1,7 @@
-package com.gamarra360.catalogo.mapper;
+package pe.com.gamarra360.backend.catalogo.mapper;
 
-import com.gamarra360.catalogo.dto.*;
-import com.gamarra360.catalogo.entity.*;
+import pe.com.gamarra360.backend.catalogo.dto.*;
+import pe.com.gamarra360.backend.catalogo.entity.*;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;

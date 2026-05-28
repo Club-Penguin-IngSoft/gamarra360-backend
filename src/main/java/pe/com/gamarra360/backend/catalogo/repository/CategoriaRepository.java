@@ -1,6 +1,6 @@
-package com.gamarra360.catalogo.repository;
+package pe.com.gamarra360.backend.catalogo.repository;
 
-import com.gamarra360.catalogo.entity.Categoria;
+import pe.com.gamarra360.backend.catalogo.entity.Categoria;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

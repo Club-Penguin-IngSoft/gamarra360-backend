@@ -1,4 +1,4 @@
-package com.gamarra360.exception;
+package pe.com.gamarra360.backend.exception;
 
 /**
  * Lanzada cuando un recurso solicitado por ID no existe en la BD.

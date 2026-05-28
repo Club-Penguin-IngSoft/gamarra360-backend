@@ -1,4 +1,4 @@
-package com.gamarra360.catalogo.dto;
+package pe.com.gamarra360.backend.catalogo.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;

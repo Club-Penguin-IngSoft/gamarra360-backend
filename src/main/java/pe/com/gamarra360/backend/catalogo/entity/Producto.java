@@ -1,6 +1,6 @@
-package com.gamarra360.catalogo.entity;
+package pe.com.gamarra360.backend.catalogo.entity;
 
-import com.gamarra360.usuario.entity.Tienda;
+import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

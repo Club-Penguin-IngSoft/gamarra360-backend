@@ -1,13 +1,13 @@
-package com.gamarra360.catalogo.service;
+package pe.com.gamarra360.backend.catalogo.service;
 
-import com.gamarra360.catalogo.dto.FiltrosCatalogoDto;
-import com.gamarra360.catalogo.dto.PagedResponse;
-import com.gamarra360.catalogo.dto.ProductoDto;
-import com.gamarra360.catalogo.entity.Categoria;
-import com.gamarra360.catalogo.entity.Producto;
-import com.gamarra360.catalogo.mapper.ProductoMapper;
-import com.gamarra360.catalogo.repository.ProductoRepository;
-import com.gamarra360.exception.RecursoNoEncontradoException;
+import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
+import pe.com.gamarra360.backend.catalogo.dto.PagedResponse;
+import pe.com.gamarra360.backend.catalogo.dto.ProductoDto;
+import pe.com.gamarra360.backend.catalogo.entity.Categoria;
+import pe.com.gamarra360.backend.catalogo.entity.Producto;
+import pe.com.gamarra360.backend.catalogo.mapper.ProductoMapper;
+import pe.com.gamarra360.backend.catalogo.repository.ProductoRepository;
+import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

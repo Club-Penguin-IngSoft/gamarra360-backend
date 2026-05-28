@@ -1,6 +1,6 @@
-package com.gamarra360.catalogo.repository;
+package pe.com.gamarra360.backend.catalogo.repository;
 
-import com.gamarra360.catalogo.entity.Producto;
+import pe.com.gamarra360.backend.catalogo.entity.Producto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,11 +37,10 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
             SELECT DISTINCT p FROM Producto p
             LEFT JOIN FETCH p.tienda t
             LEFT JOIN t.comerciante c
-            LEFT JOIN c.usuario u
             WHERE p.activo = true
               AND t.verificada = true
               AND c.verificado = true
-              AND u.activo = true
+              AND c.activo = true
             """)
     List<Producto> findCatalogoPublico();
 
@@ -55,11 +54,10 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
             SELECT DISTINCT p FROM Producto p
             LEFT JOIN FETCH p.tienda t
             LEFT JOIN t.comerciante c
-            LEFT JOIN c.usuario u
             WHERE p.activo = true
               AND t.verificada = true
               AND c.verificado = true
-              AND u.activo = true
+              AND c.activo = true
               AND (
                 LOWER(p.nombre)            LIKE LOWER(CONCAT('%', :q, '%'))
                 OR LOWER(p.descripcion)    LIKE LOWER(CONCAT('%', :q, '%'))
@@ -76,7 +74,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
             SELECT p FROM Producto p
             LEFT JOIN FETCH p.tienda t
             LEFT JOIN FETCH t.comerciante c
-            LEFT JOIN FETCH c.usuario u
             WHERE p.idProducto = :id
               AND p.activo = true
             """)

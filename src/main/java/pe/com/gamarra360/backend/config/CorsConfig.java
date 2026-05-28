@@ -1,4 +1,4 @@
-package com.gamarra360.config;
+package pe.com.gamarra360.backend.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

@@ -1,9 +1,9 @@
-package com.gamarra360.catalogo.controller;
+package pe.com.gamarra360.backend.catalogo.controller;
 
-import com.gamarra360.catalogo.dto.FiltrosCatalogoDto;
-import com.gamarra360.catalogo.dto.PagedResponse;
-import com.gamarra360.catalogo.dto.ProductoDto;
-import com.gamarra360.catalogo.service.ProductoService;
+import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
+import pe.com.gamarra360.backend.catalogo.dto.PagedResponse;
+import pe.com.gamarra360.backend.catalogo.dto.ProductoDto;
+import pe.com.gamarra360.backend.catalogo.service.ProductoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
