@@ -28,4 +28,5 @@ public class RegistroUsuarioRequest {
     private String ruc;
     private String razonSocial;
     private String tipoDocumento;
+    private String nombreTienda;
 }

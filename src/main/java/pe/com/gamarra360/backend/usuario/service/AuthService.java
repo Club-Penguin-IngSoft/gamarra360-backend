@@ -65,6 +65,7 @@ public class AuthService {
                 token,
                 usuario.getUsuarioId(),
                 usuario.getEmail(),
+                usuario.getNombres(),
                 usuario.getRol().name(),
                 false
         );
@@ -89,7 +90,7 @@ public class AuthService {
         usuario.setProveedorAuth(ProveedorAuth.LOCAL);
         Usuario guardado = usuarioRepository.save(usuario);
         String token = jwtService.generarToken(new UsuarioPrincipal(guardado));
-        return new AuthResponse(token, guardado.getUsuarioId(), guardado.getEmail(), guardado.getRol().name(),false);
+        return new AuthResponse(token, guardado.getUsuarioId(), guardado.getEmail(),guardado.getNombres() ,guardado.getRol().name(),false);
     }
 
     public AuthResponse registrarGoogle(RegistroUsuarioRequest request) {
@@ -114,6 +115,7 @@ public class AuthService {
                 token,
                 guardado.getUsuarioId(),
                 guardado.getEmail(),
+                guardado.getNombres(),
                 guardado.getRol().name(),
                 false
         );
@@ -141,14 +143,19 @@ public class AuthService {
         //Comerciante comerciante = new Comerciante();
         usuario.setRuc(request.getRuc());
         usuario.setRazonSocial(request.getRazonSocial());
-        usuario.setVerificado(false);
+        usuario.setVerificado(false);//los que faltan revisar
         usuario.setTipoDocumento(request.getTipoDocumento());
+        usuario.setNombreTienda(request.getNombreTienda());
+        usuario.setNombreComerciante(request.getNombres());
+        usuario.setApellidoComerciante(request.getPrimerApellido());
+        usuario.setAprobado(false);//aprueba o rechaza
         Usuario savedUser = usuarioRepository.save(usuario);
         String token = jwtService.generarToken(new UsuarioPrincipal(savedUser));
         return new AuthResponse(
                 token,
                 savedUser.getUsuarioId(),
                 savedUser.getEmail(),
+                savedUser.getNombres(),
                 savedUser.getRol().name(),
                 false
         );
