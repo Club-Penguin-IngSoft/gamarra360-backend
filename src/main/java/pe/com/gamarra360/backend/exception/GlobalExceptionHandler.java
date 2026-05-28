@@ -1,4 +1,4 @@
-package pe.com.gamarra360.backend.exception;
+﻿package pe.com.gamarra360.backend.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -30,6 +32,16 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+//    @ExceptionHandler(UsuarioNoRegistradoGoogleException.class)
+//    public ResponseEntity<?> handleGoogleNoUser(UsuarioNoRegistradoGoogleException ex) {
+//
+//        Map<String, Object> response = new HashMap<>();
+//        response.put("needsRegistration", true);
+//        response.put("email", ex.getEmail());
+//
+//        return ResponseEntity.ok(response);
+//    }
 
     /* ----------------------- 404: Recurso no encontrado ------------------ */
     @ExceptionHandler(RecursoNoEncontradoException.class)

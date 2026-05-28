@@ -1,4 +1,4 @@
-package pe.com.gamarra360.backend.usuario.entity;
+﻿package pe.com.gamarra360.backend.usuario.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -44,6 +44,9 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     @Column(name = "proveedor_auth")
     private ProveedorAuth proveedorAuth;
+
+    @Column(name = "tipo_documento")
+    private String tipoDocumento;
 
     /**
      * Si `activo = false`, el usuario (y por lo tanto sus tiendas) NO deben
