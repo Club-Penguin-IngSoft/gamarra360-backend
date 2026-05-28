@@ -10,29 +10,15 @@ import pe.com.gamarra360.backend.usuario.entity.Comerciante;
 
 import java.util.Optional;
 
-/**
- * AdminComercianteRepository
- *
- * Acceso a datos para el módulo de aprobación de vendedores (CU-04, RF-14).
- */
 @Repository
 public interface AdminComercianteRepository extends JpaRepository<Comerciante, Integer> {
 
-    /**
-     * Filtra comerciantes por estado.
-     * Estado: PENDIENTE_APROBACION | APROBADO | RECHAZADO | SUSPENDIDO
-     */
-    @Query("SELECT c FROM Comerciante c WHERE c.estado = :estado")
-    Page<Comerciante> findByEstado(@Param("estado") String estado, Pageable pageable);
+    // Pendientes: verificado = false
+    Page<Comerciante> findByVerificado(Boolean verificado, Pageable pageable);
 
-    /** Conteo de solicitudes por estado, para badges del panel. */
-    @Query("SELECT COUNT(c) FROM Comerciante c WHERE c.estado = :estado")
-    long countByEstado(@Param("estado") String estado);
+    // Filtro por verificado + aprobado (reemplaza el activo que no existe en comerciantes)
+    Page<Comerciante> findByVerificadoAndAprobado(Boolean verificado, Boolean aprobado, Pageable pageable);
 
-    /**
-     * Detalle con usuario asociado para la pantalla de revisión.
-     * Dado que Comerciante hereda de Usuario con JOINED, Hibernate realiza el JOIN implícitamente.
-     */
     @Query("SELECT c FROM Comerciante c WHERE c.usuarioId = :id")
     Optional<Comerciante> findByIdConUsuario(@Param("id") Integer id);
 }

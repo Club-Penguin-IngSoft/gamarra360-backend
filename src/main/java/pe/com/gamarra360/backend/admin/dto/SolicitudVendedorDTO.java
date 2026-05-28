@@ -19,4 +19,5 @@ public class SolicitudVendedorDTO {
     private String emailContacto;
     private String estado;           // PENDIENTE_APROBACION | APROBADO | RECHAZADO | SUSPENDIDO
     private LocalDateTime fechaSolicitud;
+    private String nombreTienda;
 }

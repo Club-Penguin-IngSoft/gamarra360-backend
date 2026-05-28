@@ -19,14 +19,20 @@ public class Comerciante extends Usuario {
     private Boolean verificado;
     @Column(name = "id_tienda")
     private Long idTienda;
-    private String estado;
-    @Column(name = "motivo_rechazo")
-    private String motivoRechazo;
-
+    //private String estado;//no se usa
+    //@Column(name = "motivo_rechazo")
+    //private String motivoRechazo;//no se usa
+    @Column(name = "nombre_tienda")
+    private String nombreTienda;
+    @Column(name = "primer_nombre")
+    private String nombreComerciante;
+    @Column(name = "primer_apellido")
+    private String apellidoComerciante;
+    @Column(name = "aprobado")
+    private Boolean aprobado;
     @OneToOne(mappedBy = "comerciante", fetch = FetchType.LAZY)
     @JsonIgnore
     private Tienda tienda;
-
     public Comerciante() {
     }
 }
