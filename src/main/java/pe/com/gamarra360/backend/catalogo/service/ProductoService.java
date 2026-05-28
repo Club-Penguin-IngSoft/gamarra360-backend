@@ -1,42 +1,35 @@
 package pe.com.gamarra360.backend.catalogo.service;
 
-import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
-import pe.com.gamarra360.backend.catalogo.dto.PagedResponse;
-import pe.com.gamarra360.backend.catalogo.dto.ProductoDto;
+import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
+import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
+import pe.com.gamarra360.backend.catalogo.entity.Producto;
+import pe.com.gamarra360.backend.service.CrudService;
 
 import java.util.List;
 
 /**
- * Contrato del servicio de productos (CU-07 + CU-08).
+ * Contrato del servicio de productos.
  *
- * Es la única superficie pública del módulo `catalogo`. Otros módulos
- * (carrito, pedido, etc.) deben consumir este servicio — NUNCA acceder
- * directamente al repositorio (CLAUDE.md §4).
+ * Extiende CrudService para las operaciones CRUD base (RF-15, RF-16, RF-17).
+ * Agrega métodos específicos del catálogo de Gamarra 360°.
  */
-public interface ProductoService {
+public interface ProductoService extends CrudService<Producto, Integer> {
 
-    /**
-     * Lista productos del catálogo público aplicando filtros y, si hay `q`,
-     * ranqueando por relevancia (CU-08, RF-22/RF-23).
-     *
-     * @param filtros estructura con todos los filtros (search, categorías, precio, etc.)
-     * @return lista de productos (formato resumido, sin variantes/specs/descuentos)
-     */
-    PagedResponse<ProductoDto> listarConFiltros(FiltrosCatalogoDto filtros);
+    /** Lista todos los productos activos como DTO de respuesta (catálogo público). */
+    List<ProductoResponse> listarTodosComoResponse();
 
-    /**
-     * Devuelve la ficha completa de un producto por id, incluyendo variantes,
-     * imágenes, especificaciones y reglas de descuento (CU-08).
-     *
-     * @param idProducto id del producto
-     * @return DTO completo
-    * @throws pe.com.gamarra360.backend.exception.RecursoNoEncontradoException si no existe o está inactivo
-     */
-    ProductoDto obtenerPorId(Integer idProducto);
+    /** Lista los productos activos de una tienda específica. */
+    List<ProductoResponse> listarPorTienda(Integer idTienda);
 
-    /**
-     * Lista productos de una tienda específica.
-     * Útil para el perfil de tienda en el frontend.
-     */
-    List<ProductoDto> listarPorTienda(Integer idTienda);
+    /** Devuelve el detalle completo de un producto por ID. */
+    ProductoResponse obtenerProductoResponse(Integer idProducto);
+
+    /** Crea un producto validando que el comerciante esté verificado y sea dueño de la tienda (RF-15). */
+    ProductoResponse crearProducto(ProductoRequest request, Integer comercianteId);
+
+    /** Edita un producto validando que pertenezca a la tienda del comerciante (RF-16). */
+    ProductoResponse actualizarProducto(Integer idProducto, ProductoRequest request, Integer comercianteId);
+
+    /** Eliminación lógica (activo=false) con validación de pedidos/cotizaciones activas (RF-17). */
+    void eliminarProducto(Integer idProducto, Integer comercianteId);
 }

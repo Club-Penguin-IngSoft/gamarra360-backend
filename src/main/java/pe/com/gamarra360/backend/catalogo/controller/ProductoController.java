@@ -1,84 +1,106 @@
 package pe.com.gamarra360.backend.catalogo.controller;
 
-import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
-import pe.com.gamarra360.backend.catalogo.dto.PagedResponse;
-import pe.com.gamarra360.backend.catalogo.dto.ProductoDto;
-import pe.com.gamarra360.backend.catalogo.service.ProductoService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
+import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
+import pe.com.gamarra360.backend.catalogo.service.ProductoService;
+import pe.com.gamarra360.backend.security.UsuarioPrincipal;
 
 import java.util.List;
 
 /**
  * Controller REST del módulo `catalogo`.
  *
- * Endpoints implementados (CU-07 + CU-08):
- *  - GET /api/v1/productos          → listar catálogo con filtros + búsqueda
- *  - GET /api/v1/productos/{id}     → detalle completo del producto
- *  - GET /api/v1/productos/tienda/{idTienda} → productos de una tienda
+ * Endpoints (CU-07 + CU-08 + RF-15/16/17):
+ *  - GET    /api/v1/productos                    → catálogo público
+ *  - GET    /api/v1/productos/{id}               → detalle de producto
+ *  - GET    /api/v1/productos/tienda/{idTienda}  → productos de una tienda
+ *  - POST   /api/v1/productos                    → crear producto (VENDEDOR)
+ *  - PUT    /api/v1/productos/{id}               → editar producto (VENDEDOR)
+ *  - DELETE /api/v1/productos/{id}               → eliminar producto (VENDEDOR)
  *
- * Sigue las convenciones CLAUDE.md §5:
- *  - Rutas en /api/v1/{recurso} en plural y kebab-case
- *  - Sin lógica de negocio en el controller (delega 100% al service)
- *  - JSON in, JSON out
- *  - No requiere autenticación (catálogo público)
+ * Sigue las convenciones CLAUDE.md §5.
  */
+@Slf4j
 @RestController
-@RequestMapping("/productos")
+@RequestMapping("/api/v1/productos")
 public class ProductoController {
 
-    private static final Logger log = LoggerFactory.getLogger(ProductoController.class);
+    private final ProductoService service;
 
-    private final ProductoService productoService;
-
-    public ProductoController(ProductoService productoService) {
-        this.productoService = productoService;
+    public ProductoController(ProductoService service) {
+        this.service = service;
     }
 
-    /**
-     * Lista productos del catálogo público.
-     *
-     * Query params (todos opcionales):
-     *   - q                 → palabra clave para búsqueda por relevancia
-     *   - categorias        → repeatable (?categorias=HOMBRE&categorias=MUJER)
-     *   - tipoServicio      → "COMPRA_DIRECTA" | "PERSONALIZABLE"
-     *   - precioMin, precioMax
-     *   - color, material, tallas, entrega, tiposProducto (multi)
-     *
-     * Ejemplo:
-     *   GET /api/v1/productos?q=polo&categorias=HOMBRE&precioMin=20
-     */
+    /** Lista todos los productos activos (público). */
     @GetMapping
-    public ResponseEntity<PagedResponse<ProductoDto>> listar(FiltrosCatalogoDto filtros) {
-        log.debug("GET /productos con filtros: {}", filtros);
-        PagedResponse<ProductoDto> productos = productoService.listarConFiltros(filtros);
-        return ResponseEntity.ok(productos);
+    public ResponseEntity<List<ProductoResponse>> listar() {
+        log.info("GET /api/v1/productos");
+        return ResponseEntity.ok(service.listarTodosComoResponse());
     }
 
-    /**
-     * Devuelve la ficha completa de un producto (CU-08).
-     * Incluye variantes con stock, imágenes ordenadas, especificaciones
-     * y reglas de descuento.
-     */
+    /** Obtiene un producto por ID con detalle completo (público). */
     @GetMapping("/{id}")
-    public ResponseEntity<ProductoDto> obtener(@PathVariable Integer id) {
-        log.debug("GET /productos/{}", id);
-        ProductoDto producto = productoService.obtenerPorId(id);
-        return ResponseEntity.ok(producto);
+    public ResponseEntity<ProductoResponse> obtener(@PathVariable Integer id) {
+        log.info("GET /api/v1/productos/{}", id);
+        return ResponseEntity.ok(service.obtenerProductoResponse(id));
+    }
+
+    /** Lista los productos activos de una tienda específica (RF-15). */
+    @GetMapping("/tienda/{idTienda}")
+    public ResponseEntity<List<ProductoResponse>> listarPorTienda(@PathVariable Integer idTienda) {
+        log.info("GET /api/v1/productos/tienda/{}", idTienda);
+        return ResponseEntity.ok(service.listarPorTienda(idTienda));
     }
 
     /**
-     * Lista productos de una tienda específica. Usado en el perfil de tienda.
-     *
-     * Ejemplo:
-     *   GET /api/v1/productos/tienda/3
+     * Crea un producto en la tienda del comerciante autenticado (RF-15).
+     * Valida que el comerciante esté verificado y que la tienda le pertenezca.
      */
-    @GetMapping("/tienda/{idTienda}")
-    public ResponseEntity<List<ProductoDto>> listarPorTienda(@PathVariable Integer idTienda) {
-        log.debug("GET /productos/tienda/{}", idTienda);
-        List<ProductoDto> productos = productoService.listarPorTienda(idTienda);
-        return ResponseEntity.ok(productos);
+    @PostMapping
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<ProductoResponse> crear(
+            @Valid @RequestBody ProductoRequest request,
+            Authentication auth) {
+        log.info("POST /api/v1/productos");
+        Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.crearProducto(request, comercianteId));
+    }
+
+    /**
+     * Edita un producto validando que pertenezca a la tienda del comerciante (RF-16).
+     * Retorna 403 si intenta editar un producto de otra tienda.
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<ProductoResponse> actualizar(
+            @PathVariable Integer id,
+            @Valid @RequestBody ProductoRequest request,
+            Authentication auth) {
+        log.info("PUT /api/v1/productos/{}", id);
+        Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        return ResponseEntity.ok(service.actualizarProducto(id, request, comercianteId));
+    }
+
+    /**
+     * Eliminación lógica (activo=false). Retorna 409 si hay pedidos activos
+     * o cotizaciones en curso; 403 si es producto de otra tienda (RF-17).
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Integer id,
+            Authentication auth) {
+        log.info("DELETE /api/v1/productos/{}", id);
+        Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        service.eliminarProducto(id, comercianteId);
+        return ResponseEntity.noContent().build();
     }
 }

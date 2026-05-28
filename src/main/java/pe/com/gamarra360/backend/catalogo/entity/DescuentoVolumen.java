@@ -1,5 +1,6 @@
 package pe.com.gamarra360.backend.catalogo.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,6 +29,7 @@ public class DescuentoVolumen {
     @Column(name = "id_descuento")
     private Integer idDescuento;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_producto")
     private Producto producto;
