@@ -11,7 +11,7 @@ import java.util.List;
 public interface CotizacionCatalogoRepository extends JpaRepository<CotizacionCatalogo, Integer> {
 
     @Query("SELECT COUNT(cc) > 0 FROM CotizacionCatalogo cc " +
-           "WHERE cc.varianteProducto.idProducto = :idProducto AND cc.cotizacion.estado IN :estados")
+           "WHERE cc.varianteProducto.producto.idProducto = :idProducto AND cc.cotizacion.estado IN :estados")
     boolean existeCotizacionActivaPorProducto(@Param("idProducto") Integer idProducto,
                                               @Param("estados") List<EstadoSolicitud> estados);
 }
