@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -18,7 +19,12 @@ import java.util.stream.Collectors;
  * Convierte cualquier excepción de la aplicación en una respuesta uniforme
  * (ErrorRespuestaDto) sin exponer stack traces al cliente (CLAUDE.md §5).
  *
- * Tabla de mapeo HTTP definida en CLAUDE.md §5.
+ * Tabla de mapeo HTTP:
+ *  - 400 → MethodArgumentNotValidException, DatosInvalidosException
+ *  - 403 → AccessDeniedException, DisabledException
+ *  - 404 → RecursoNoEncontradoException
+ *  - 409 → ConflictoNegocioException
+ *  - 500 → Exception (catch-all)
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -86,6 +92,63 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.badRequest().body(error);
+    }
+
+    /* ----------------------- 409: Conflicto de negocio ------------------- */
+    @ExceptionHandler(ConflictoNegocioException.class)
+    public ResponseEntity<ErrorRespuestaDto> manejarConflicto(
+            ConflictoNegocioException ex,
+            HttpServletRequest request) {
+
+        log.warn("409 conflicto en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorRespuestaDto error = ErrorRespuestaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflicto")
+                .mensaje(ex.getMessage())
+                .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /* ----------------------- 403: Acceso no autorizado ------------------- */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorRespuestaDto> manejarAcceso(
+            AccessDeniedException ex,
+            HttpServletRequest request) {
+
+        log.warn("403 acceso denegado en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorRespuestaDto error = ErrorRespuestaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Acceso no autorizado")
+                .mensaje("No tienes permisos para realizar esta acción.")
+                .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    /* ----------------------- 403: Cuenta desactivada --------------------- */
+    @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
+    public ResponseEntity<ErrorRespuestaDto> manejarCuentaDesactivada(
+            org.springframework.security.authentication.DisabledException ex,
+            HttpServletRequest request) {
+
+        log.warn("403 cuenta desactivada en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorRespuestaDto error = ErrorRespuestaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Cuenta desactivada")
+                .mensaje("Tu cuenta de comerciante está pendiente de aprobación o ha sido desactivada por el administrador.")
+                .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
     /* ----------------------- 500: Catch-all ------------------------------ */

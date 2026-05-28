@@ -34,6 +34,10 @@ public class Producto {
     @Column(name = "id_producto")
     private Integer idProducto;
 
+    /** FK de la tienda (columna real en BD — usada por el service para comparaciones rápidas). */
+    @Column(name = "id_tienda", insertable = false, updatable = false)
+    private Integer idTienda;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_tienda")
     private Tienda tienda;
