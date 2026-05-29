@@ -48,31 +48,69 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
                 return new RecursoNoEncontradoException("La tienda solicitada no existe o no está verificada.");
             });
         
+        // Filtrar productos activos
+        List<Producto> productosActivos = tienda.getProductos().stream()
+            .filter(p -> p.getActivo() != null && p.getActivo())
+            .collect(Collectors.toList());
+
+        // Extraer categorías únicas
+        java.util.Set<String> categorias = new java.util.HashSet<>();
+        for (Producto p : productosActivos) {
+            if (p.getCategoria() != null) {
+                categorias.add(p.getCategoria().getNombreCategoria());
+            }
+        }
+
+        // Extraer tipos de servicio únicos.
+        // Orden de prioridad exclusivo (igual que derivarTipoServicio en catalogoService.ts):
+        //   1. esPersonalizable=true  → PERSONALIZABLE
+        //   2. precioBase null/0      → COTIZACION
+        //   3. resto                  → COMPRA_DIRECTA
+        java.util.Set<String> tiposServicio = new java.util.HashSet<>();
+        for (Producto p : productosActivos) {
+            if (Boolean.TRUE.equals(p.getEsPersonalizable())) {
+                tiposServicio.add("PERSONALIZABLE");
+            } else if (p.getPrecioBase() == null || p.getPrecioBase() == 0) {
+                tiposServicio.add("COTIZACION");
+            } else {
+                tiposServicio.add("COMPRA_DIRECTA");
+            }
+        }
+
+        // Extraer tipos de producto únicos (Polos, Blusas, etc.)
+        java.util.Set<String> tiposProducto = new java.util.HashSet<>();
+        for (Producto p : productosActivos) {
+            if (p.getTipoProducto() != null && p.getTipoProducto().getNombre() != null) {
+                tiposProducto.add(p.getTipoProducto().getNombre());
+            }
+        }
+
         // Crear el DTO con los productos activos
         PerfilTiendaPublicaDto dto = new PerfilTiendaPublicaDto();
         dto.setIdTienda(tienda.getIdTienda());
         dto.setNombreComercial(tienda.getNombreComercial());
         dto.setInformacion(tienda.getInformacion());
         dto.setFoto(tienda.getFoto());
-        
-        // Filtrar productos activos
-        java.util.List<PerfilTiendaPublicaDto.ProductoResumenDto> productosActivos = tienda.getProductos()
-            .stream()
-            .filter(p -> p.getActivo() != null && p.getActivo())
+        dto.setVerificada(tienda.getVerificada());
+        dto.setCategorias(new java.util.ArrayList<>(categorias));
+        dto.setTiposServicio(new java.util.ArrayList<>(tiposServicio));
+        dto.setTiposProducto(new java.util.ArrayList<>(tiposProducto));
+
+        List<PerfilTiendaPublicaDto.ProductoResumenDto> productosResumen = productosActivos.stream()
             .map(p -> new PerfilTiendaPublicaDto.ProductoResumenDto(
                 p.getIdProducto(),
                 p.getNombre(),
                 p.getDescripcion(),
                 p.getPrecioBase(),
-                p.getImagenes() != null && !p.getImagenes().isEmpty() 
-                    ? p.getImagenes().get(0).getUrl() 
+                p.getImagenes() != null && !p.getImagenes().isEmpty()
+                    ? p.getImagenes().get(0).getUrl()
                     : null
             ))
-            .collect(java.util.stream.Collectors.toList());
-        
-        dto.setProductos(productosActivos);
-        
-        log.info("Perfil público de tienda {} obtenido exitosamente con {} productos activos", 
+            .collect(Collectors.toList());
+
+        dto.setProductos(productosResumen);
+
+        log.info("Perfil público de tienda {} obtenido exitosamente con {} productos activos",
                  idTienda, productosActivos.size());
         return dto;
     }
@@ -98,17 +136,23 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
                 }
             }
 
-            // Extraer tipos de servicio únicos
+            // Extraer tipos de servicio únicos (prioridad exclusiva, igual que obtenerPerfilPublico).
             java.util.Set<String> tiposServicio = new java.util.HashSet<>();
             for (Producto p : productosActivos) {
                 if (Boolean.TRUE.equals(p.getEsPersonalizable())) {
                     tiposServicio.add("PERSONALIZABLE");
-                }
-                if (p.getPrecioBase() == null || p.getPrecioBase() == 0) {
+                } else if (p.getPrecioBase() == null || p.getPrecioBase() == 0) {
                     tiposServicio.add("COTIZACION");
-                }
-                if (p.getPrecioBase() != null && p.getPrecioBase() > 0 && !Boolean.TRUE.equals(p.getEsPersonalizable())) {
+                } else {
                     tiposServicio.add("COMPRA_DIRECTA");
+                }
+            }
+
+            // Extraer tipos de producto únicos (Polos, Blusas, etc.)
+            java.util.Set<String> tiposProducto = new java.util.HashSet<>();
+            for (Producto p : productosActivos) {
+                if (p.getTipoProducto() != null && p.getTipoProducto().getNombre() != null) {
+                    tiposProducto.add(p.getTipoProducto().getNombre());
                 }
             }
 
@@ -119,7 +163,8 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
                 t.getFoto(),
                 t.getVerificada(),
                 new java.util.ArrayList<>(categorias),
-                new java.util.ArrayList<>(tiposServicio)
+                new java.util.ArrayList<>(tiposServicio),
+                new java.util.ArrayList<>(tiposProducto)
             );
         }).collect(java.util.stream.Collectors.toList());
 

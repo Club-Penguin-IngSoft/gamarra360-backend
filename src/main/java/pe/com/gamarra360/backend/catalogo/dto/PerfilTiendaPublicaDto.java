@@ -16,6 +16,10 @@ public class PerfilTiendaPublicaDto {
     private String nombreComercial;
     private String informacion;
     private String foto;
+    private Boolean verificada;
+    private List<String> categorias;      // Categorías que vende la tienda (para el hero)
+    private List<String> tiposServicio;   // Decide qué secciones mostrar (catálogo / cotización)
+    private List<String> tiposProducto;   // "Especialistas en..." (para CotizacionSection)
     private List<ProductoResumenDto> productos;
 
     @Getter

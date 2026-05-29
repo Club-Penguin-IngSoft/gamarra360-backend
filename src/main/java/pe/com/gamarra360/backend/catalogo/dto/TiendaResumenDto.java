@@ -19,4 +19,5 @@ public class TiendaResumenDto {
     private Boolean verificada; // Para confirmar que están verificadas
     private List<String> categorias;      // NUEVO
     private List<String> tiposServicio;   // NUEVO
+    private List<String> tiposProducto;   // NUEVO — tipos de producto que vende la tienda
 }
