@@ -20,7 +20,10 @@ public class ProductoRequest {
     @NotBlank(message = "La descripcion es obligatoria")
     private String descripcion;
 
-    @NotNull(message = "El precio base es obligatorio")
+    /**
+     * Precio base del producto. Null para PERSONALIZABLE y COTIZACION.
+     * Si se envía, debe ser mayor a cero.
+     */
     @Positive(message = "El precio base debe ser mayor a cero")
     private Double precioBase;
 
