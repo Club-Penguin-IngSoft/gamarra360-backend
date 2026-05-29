@@ -396,3 +396,6 @@ Using generated security password: 04f3bd07-6c59-4836-8c68-7cb25eb07344
 
 This generated password is for development use only. Your security configuration must be updated before running your application in production.
 
+2026-05-28 12:43:58 WARN  usuario= accion= recurso= metodo= ruta= ip= clase=org.hibernate.orm.deprecation - HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-05-28 12:44:26 WARN  usuario= accion= recurso= metodo= ruta= ip= clase=org.hibernate.orm.deprecation - HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-05-28 12:58:11 WARN  usuario= accion= recurso= metodo= ruta= ip= clase=org.hibernate.orm.deprecation - HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
