@@ -18,6 +18,7 @@ public class ProductoResponse {
     private Integer idTienda;
     private String nombreTienda;
     private List<CategoriaDto> categorias;
+    private TipoProductoDto tipoProducto;
     private List<ImagenDto> imagenes;
     private List<VarianteDto> variantes;
 
@@ -34,6 +35,13 @@ public class ProductoResponse {
         private Integer idImagen;
         private String url;
         private Boolean esPrincipal;
+    }
+
+    @Getter
+    @Setter
+    public static class TipoProductoDto {
+        private Integer idTipoProducto;
+        private String nombre;
     }
 
     @Getter

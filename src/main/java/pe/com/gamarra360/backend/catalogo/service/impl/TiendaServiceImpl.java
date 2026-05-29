@@ -93,8 +93,8 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
             // Extraer categorías únicas
             java.util.Set<String> categorias = new java.util.HashSet<>();
             for (Producto p : productosActivos) {
-                if (p.getCategorias() != null) {
-                    p.getCategorias().forEach(cat -> categorias.add(cat.getNombreCategoria()));
+                if (p.getCategoria() != null) {
+                    categorias.add(p.getCategoria().getNombreCategoria());
                 }
             }
 

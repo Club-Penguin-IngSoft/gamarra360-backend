@@ -73,14 +73,18 @@ public class Producto {
     private List<DescuentoVolumen> descuentosVolumen = new ArrayList<>();
 
     /**
-     * Relación N:M con Categoria vía tabla pivote `producto_categoria`.
-     * Cada producto puede estar en múltiples categorías (HOMBRE + UNISEX, etc.).
+     * Relación directa con Categoria por FK id_categoria.
+     * El schema define una sola categoria por producto.
      */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "producto_categoria",
-            joinColumns = @JoinColumn(name = "id_producto"),
-            inverseJoinColumns = @JoinColumn(name = "id_categoria")
-    )
-    private List<Categoria> categorias = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_categoria")
+    private Categoria categoria;
+
+    /**
+     * Relación directa con TipoProducto por FK id_tipo_producto.
+     * Ejemplo: "Polos", "Blusas", etc. Opcional.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_tipo_producto")
+    private TipoProducto tipoProducto;
 }

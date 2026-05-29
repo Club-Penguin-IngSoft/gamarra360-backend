@@ -13,6 +13,7 @@ import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
 import pe.com.gamarra360.backend.catalogo.entity.*;
 import pe.com.gamarra360.backend.catalogo.repository.*;
+import pe.com.gamarra360.backend.catalogo.entity.TipoProducto;
 import pe.com.gamarra360.backend.catalogo.service.ProductoService;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
 import pe.com.gamarra360.backend.enums.EstadoSolicitud;
@@ -37,6 +38,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     private final ComercianteRepository comercianteRepository;
     private final TiendaRepository tiendaRepository;
     private final CategoriaRepository categoriaRepository;
+    private final TipoProductoRepository tipoProductoRepository;
     private final ImagenProductoRepository imagenProductoRepository;
     private final VarianteProductoRepository varianteProductoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
@@ -47,6 +49,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             ComercianteRepository comercianteRepository,
             TiendaRepository tiendaRepository,
             CategoriaRepository categoriaRepository,
+            TipoProductoRepository tipoProductoRepository,
             ImagenProductoRepository imagenProductoRepository,
             VarianteProductoRepository varianteProductoRepository,
             DetallePedidoRepository detallePedidoRepository,
@@ -56,6 +59,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         this.comercianteRepository = comercianteRepository;
         this.tiendaRepository = tiendaRepository;
         this.categoriaRepository = categoriaRepository;
+        this.tipoProductoRepository = tipoProductoRepository;
         this.imagenProductoRepository = imagenProductoRepository;
         this.varianteProductoRepository = varianteProductoRepository;
         this.detallePedidoRepository = detallePedidoRepository;
@@ -125,7 +129,8 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             throw new DatosInvalidosException("La tienda no está verificada para publicar productos.");
         }
 
-        List<Categoria> cats = resolverCategorias(request.getIdCategorias());
+        Categoria cat = resolverCategoria(request.getIdCategoria());
+        TipoProducto tipo = resolverTipoProducto(request.getIdTipoProducto());
 
         Producto producto = new Producto();
         producto.setNombre(request.getNombre());
@@ -134,12 +139,13 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
         producto.setTienda(tienda);
         producto.setActivo(true);
-        producto.setCategorias(cats);
+        producto.setCategoria(cat);
+        producto.setTipoProducto(tipo);
 
         Producto saved = productoRepository.save(producto);
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), saved);
 
-        return buildResponse(saved, tienda.getNombreComercial(), cats, savedImages, List.of());
+        return buildResponse(saved, tienda.getNombreComercial(), cat, tipo, savedImages, List.of());
     }
 
     @Override
@@ -161,13 +167,15 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             throw new AccessDeniedException("No tienes permiso para editar productos de otra tienda.");
         }
 
-        List<Categoria> cats = resolverCategorias(request.getIdCategorias());
+        Categoria cat = resolverCategoria(request.getIdCategoria());
+        TipoProducto tipo = resolverTipoProducto(request.getIdTipoProducto());
 
         producto.setNombre(request.getNombre());
         producto.setDescripcion(request.getDescripcion());
         producto.setPrecioBase(request.getPrecioBase());
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
-        producto.setCategorias(cats);
+        producto.setCategoria(cat);
+        producto.setTipoProducto(tipo);
 
         imagenProductoRepository.deleteAll(imagenProductoRepository.findByIdProducto(idProducto));
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), producto);
@@ -178,7 +186,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         productoRepository.save(producto);
 
         return buildResponse(producto, tienda != null ? tienda.getNombreComercial() : null,
-                cats, savedImages, variantes);
+                cat, tipo, savedImages, variantes);
     }
 
     @Override
@@ -217,12 +225,17 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private List<Categoria> resolverCategorias(List<Integer> ids) {
-        List<Categoria> cats = categoriaRepository.findAllById(ids);
-        if (new HashSet<>(cats).size() != ids.size()) {
-            throw new DatosInvalidosException("Una o más categorías no existen.");
-        }
-        return cats;
+    private Categoria resolverCategoria(Integer idCategoria) {
+        return categoriaRepository.findById(idCategoria)
+                .orElseThrow(() -> new DatosInvalidosException(
+                        "La categoria no existe con id: " + idCategoria));
+    }
+
+    private TipoProducto resolverTipoProducto(Integer idTipoProducto) {
+        if (idTipoProducto == null) return null;
+        return tipoProductoRepository.findById(idTipoProducto)
+                .orElseThrow(() -> new DatosInvalidosException(
+                        "El tipo de producto no existe con id: " + idTipoProducto));
     }
 
     private List<ImagenProducto> guardarImagenes(List<ImagenRequest> imagenes, Producto producto) {
@@ -242,11 +255,12 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         List<VarianteProducto> vars = varianteProductoRepository.findByIdProducto(p.getIdProducto());
         Tienda tienda = p.getTienda();
         return buildResponse(p, tienda != null ? tienda.getNombreComercial() : null,
-                p.getCategorias(), imgs, vars);
+                p.getCategoria(), p.getTipoProducto(), imgs, vars);
     }
 
     private ProductoResponse buildResponse(Producto p, String nombreTienda,
-                                            List<Categoria> cats, List<ImagenProducto> imgs,
+                                            Categoria cat, TipoProducto tipo,
+                                            List<ImagenProducto> imgs,
                                             List<VarianteProducto> vars) {
         ProductoResponse r = new ProductoResponse();
         r.setIdProducto(p.getIdProducto());
@@ -258,12 +272,23 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setIdTienda(p.getIdTienda());
         r.setNombreTienda(nombreTienda);
 
-        r.setCategorias(cats.stream().map(c -> {
+        // Categoria como lista de un elemento (compat con frontend)
+        if (cat != null) {
             ProductoResponse.CategoriaDto d = new ProductoResponse.CategoriaDto();
-            d.setIdCategoria(c.getIdCategoria());
-            d.setNombre(c.getNombreCategoria());
-            return d;
-        }).collect(Collectors.toList()));
+            d.setIdCategoria(cat.getIdCategoria());
+            d.setNombre(cat.getNombreCategoria());
+            r.setCategorias(List.of(d));
+        } else {
+            r.setCategorias(List.of());
+        }
+
+        // Tipo de producto
+        if (tipo != null) {
+            ProductoResponse.TipoProductoDto tp = new ProductoResponse.TipoProductoDto();
+            tp.setIdTipoProducto(tipo.getIdTipoProducto());
+            tp.setNombre(tipo.getNombre());
+            r.setTipoProducto(tp);
+        }
 
         r.setImagenes(imgs.stream().map(i -> {
             ProductoResponse.ImagenDto d = new ProductoResponse.ImagenDto();
