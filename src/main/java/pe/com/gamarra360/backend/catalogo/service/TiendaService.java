@@ -2,7 +2,11 @@ package pe.com.gamarra360.backend.catalogo.service;
 
 import pe.com.gamarra360.backend.service.CrudService;
 import pe.com.gamarra360.backend.catalogo.entity.Tienda;
+
+import java.util.List;
+
 import pe.com.gamarra360.backend.catalogo.dto.PerfilTiendaPublicaDto;
+import pe.com.gamarra360.backend.catalogo.dto.TiendaResumenDto;
 
 public interface TiendaService extends CrudService<Tienda, Integer> {
     
@@ -12,4 +16,5 @@ public interface TiendaService extends CrudService<Tienda, Integer> {
      * Lanza RecursoNoEncontradoException si la tienda no existe o no está verificada.
      */
     PerfilTiendaPublicaDto obtenerPerfilPublico(Integer idTienda);
+    List<TiendaResumenDto> listarTiendasPublicas();
 }

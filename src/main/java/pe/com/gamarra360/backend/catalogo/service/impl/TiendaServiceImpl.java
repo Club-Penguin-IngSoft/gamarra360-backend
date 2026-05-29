@@ -4,10 +4,16 @@ import lombok.extern.slf4j.Slf4j;
 
 import pe.com.gamarra360.backend.service.AbstractCrudService;
 import pe.com.gamarra360.backend.catalogo.dto.PerfilTiendaPublicaDto;
+import pe.com.gamarra360.backend.catalogo.dto.TiendaResumenDto;
+import pe.com.gamarra360.backend.catalogo.entity.Producto;
 import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
 import pe.com.gamarra360.backend.catalogo.service.TiendaService;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 
@@ -70,4 +76,55 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
                  idTienda, productosActivos.size());
         return dto;
     }
+    
+    @Override
+    public List<TiendaResumenDto> listarTiendasPublicas() {
+        log.info("Listando todas las tiendas públicas");
+
+        List<Tienda> tiendasVerificadas = tiendaRepository.findAllByVerificadaTrue();
+
+        // Mapear a DTO de resumen
+        List<TiendaResumenDto> dtos = tiendasVerificadas.stream().map(t -> {
+            // Filtrar productos activos
+            List<Producto> productosActivos = t.getProductos().stream()
+                .filter(p -> p.getActivo() != null && p.getActivo())
+                .toList();
+
+            // Extraer categorías únicas
+            java.util.Set<String> categorias = new java.util.HashSet<>();
+            for (Producto p : productosActivos) {
+                if (p.getCategorias() != null) {
+                    p.getCategorias().forEach(cat -> categorias.add(cat.getNombreCategoria()));
+                }
+            }
+
+            // Extraer tipos de servicio únicos
+            java.util.Set<String> tiposServicio = new java.util.HashSet<>();
+            for (Producto p : productosActivos) {
+                if (Boolean.TRUE.equals(p.getEsPersonalizable())) {
+                    tiposServicio.add("PERSONALIZABLE");
+                }
+                if (p.getPrecioBase() == null || p.getPrecioBase() == 0) {
+                    tiposServicio.add("COTIZACION");
+                }
+                if (p.getPrecioBase() != null && p.getPrecioBase() > 0 && !Boolean.TRUE.equals(p.getEsPersonalizable())) {
+                    tiposServicio.add("COMPRA_DIRECTA");
+                }
+            }
+
+            return new TiendaResumenDto(
+                t.getIdTienda(),
+                t.getNombreComercial(),
+                t.getInformacion(),
+                t.getFoto(),
+                t.getVerificada(),
+                new java.util.ArrayList<>(categorias),
+                new java.util.ArrayList<>(tiposServicio)
+            );
+        }).collect(java.util.stream.Collectors.toList());
+
+        log.info("Se encontraron {} tiendas públicas", dtos.size());
+        return dtos;
+    }
+    
 }
