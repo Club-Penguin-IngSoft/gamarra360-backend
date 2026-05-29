@@ -2,6 +2,7 @@ package pe.com.gamarra360.backend.catalogo.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import pe.com.gamarra360.backend.catalogo.dto.PerfilTiendaPublicaDto;
+import pe.com.gamarra360.backend.catalogo.dto.TiendaResumenDto;
 import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 import pe.com.gamarra360.backend.catalogo.service.TiendaService;
 import org.springframework.http.HttpStatus;
@@ -26,16 +27,22 @@ public class TiendaController {
         return ResponseEntity.ok(service.listar());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Tienda> obtener(@PathVariable Integer id) {
-        log.info("GET /api/v1/tiendas/{}", id);
-        return ResponseEntity.ok(service.obtener(id));
+    @GetMapping("/publico")
+    public ResponseEntity<List<TiendaResumenDto>> listarTiendasPublicas() {
+        log.info("GET /api/v1/tiendas/publico");
+        return ResponseEntity.ok(service.listarTiendasPublicas());
     }
 
     @GetMapping("/publico/{id}")
     public ResponseEntity<PerfilTiendaPublicaDto> obtenerPerfilPublico(@PathVariable Integer id) {
         log.info("GET /api/v1/tiendas/publico/{}", id);
         return ResponseEntity.ok(service.obtenerPerfilPublico(id));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Tienda> obtener(@PathVariable Integer id) {
+        log.info("GET /api/v1/tiendas/{}", id);
+        return ResponseEntity.ok(service.obtener(id));
     }
 
     @PostMapping

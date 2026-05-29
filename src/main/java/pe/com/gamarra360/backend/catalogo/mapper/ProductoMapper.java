@@ -45,7 +45,7 @@ public class ProductoMapper {
                 .idComerciante(comercianteIdString(p))
                 .nombreTienda(nombreTienda(p))
                 .imagenes(imagenesOrdenadas(p.getImagenes()))
-                .categoria(categoriaPrincipal(p.getCategorias()))
+                .categoria(categoriaPrincipal(p.getCategoria()))
                 .tipoServicio(derivarTipoServicio(p.getEsPersonalizable()))
                 .precioBase(p.getPrecioBase())
                 .precioFinal(precioFinal)
@@ -97,12 +97,12 @@ public class ProductoMapper {
     }
 
     /**
-     * Devuelve la categoría "principal" del producto (la primera asociada).
-     * Si la N:M tiene múltiples, simplificamos a una sola para la UI.
+     * Devuelve el nombre de la categoria del producto.
+     * Ahora el schema define una sola FK directa id_categoria.
      */
-    private String categoriaPrincipal(List<Categoria> categorias) {
-        if (categorias == null || categorias.isEmpty()) return "UNISEX_ADULTOS";
-        return categorias.get(0).getNombreCategoria();
+    private String categoriaPrincipal(Categoria categoria) {
+        if (categoria == null) return "UNISEX_ADULTOS";
+        return categoria.getNombreCategoria();
     }
 
     /**

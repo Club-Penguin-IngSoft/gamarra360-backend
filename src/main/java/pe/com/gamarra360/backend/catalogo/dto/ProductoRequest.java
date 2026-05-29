@@ -20,7 +20,10 @@ public class ProductoRequest {
     @NotBlank(message = "La descripcion es obligatoria")
     private String descripcion;
 
-    @NotNull(message = "El precio base es obligatorio")
+    /**
+     * Precio base del producto. Null para PERSONALIZABLE y COTIZACION.
+     * Si se envía, debe ser mayor a cero.
+     */
     @Positive(message = "El precio base debe ser mayor a cero")
     private Double precioBase;
 
@@ -29,8 +32,12 @@ public class ProductoRequest {
     @NotNull(message = "El id de tienda es obligatorio")
     private Integer idTienda;
 
-    @NotEmpty(message = "Debe incluir al menos una categoria")
-    private List<Integer> idCategorias;
+    /** ID de la categoria del producto (una sola, segun schema). */
+    @NotNull(message = "Debe incluir una categoria")
+    private Integer idCategoria;
+
+    /** ID del tipo de producto (opcional). Ejemplo: 1=Polos, 2=Blusas, etc. */
+    private Integer idTipoProducto;
 
     @NotEmpty(message = "Debe incluir al menos una imagen")
     @Valid

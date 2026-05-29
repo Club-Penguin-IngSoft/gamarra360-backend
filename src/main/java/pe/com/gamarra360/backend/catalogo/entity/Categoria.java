@@ -7,9 +7,9 @@ import lombok.Setter;
 
 /**
  * Tabla `categorias`. Catálogo de categorías de productos
- * (HOMBRE, MUJER, NIÑOS, UNISEX ADULTOS, UNISEX NIÑOS).
+ * (Hombre, Mujer, Niños, Unisex Adultos).
  *
- * Relación N:M con Producto vía tabla pivote `producto_categoria`.
+ * Relación con Producto: cada producto tiene una FK directa id_categoria.
  */
 @Entity
 @Table(name = "categorias")
