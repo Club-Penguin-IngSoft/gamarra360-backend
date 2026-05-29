@@ -26,11 +26,11 @@ public class ProductoRequest {
 
     private Boolean esPersonalizable = false;
 
-    @NotNull(message = "El id de tienda es obligatorio")
-    private Integer idTienda;
+    @NotNull(message = "La categoría es obligatoria")
+    private Integer idCategoria;
 
-    @NotEmpty(message = "Debe incluir al menos una categoria")
-    private List<Integer> idCategorias;
+    @NotNull(message = "El tipo de producto es obligatorio")
+    private Integer idTipoProducto;
 
     @NotEmpty(message = "Debe incluir al menos una imagen")
     @Valid

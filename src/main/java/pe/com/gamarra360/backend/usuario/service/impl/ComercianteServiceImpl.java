@@ -49,15 +49,19 @@ public class ComercianteServiceImpl extends AbstractCrudService<Comerciante, Int
         Comerciante comerciante = obtener(id);
         comerciante.setVerificado(true);
         comerciante.setActivo(true);
+        comerciante.setAprobado(true);
+        comercianteRepository.save(comerciante);
 
         Tienda tienda = new Tienda();
         tienda.setIdComerciante(comerciante.getUsuarioId());
-        tienda.setNombreComercial(comerciante.getRazonSocial());
+        tienda.setNombreComercial(
+                comerciante.getNombreTienda() != null
+                        ? comerciante.getNombreTienda()
+                        : comerciante.getRazonSocial());
         tienda.setVerificada(false);
         Tienda tiendaGuardada = tiendaRepository.save(tienda);
 
-        comerciante.setIdTienda(Long.valueOf(tiendaGuardada.getIdTienda()));
-        return comercianteRepository.save(comerciante);
+        return obtener(id);
     }
 
     @Override

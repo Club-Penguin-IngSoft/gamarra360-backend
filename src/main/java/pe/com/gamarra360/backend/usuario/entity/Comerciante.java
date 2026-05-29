@@ -29,9 +29,6 @@ public class Comerciante extends Usuario {
     @Column(name = "verificado")
     private Boolean verificado;
 
-    /** FK de la tienda asociada (columna id_tienda en la tabla comerciantes). */
-    @Column(name = "id_tienda")
-    private Long idTienda;
     //private String estado;//no se usa
     //@Column(name = "motivo_rechazo")
     //private String motivoRechazo;//no se usa

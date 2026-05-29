@@ -1,19 +1,22 @@
 package pe.com.gamarra360.backend.catalogo.controller;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-
-import pe.com.gamarra360.backend.catalogo.entity.Categoria;
-import pe.com.gamarra360.backend.catalogo.service.CategoriaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import pe.com.gamarra360.backend.catalogo.dto.CategoriaRequest;
+import pe.com.gamarra360.backend.catalogo.dto.CategoriaResponse;
+import pe.com.gamarra360.backend.catalogo.service.CategoriaService;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/categorias")
-@Slf4j
 public class CategoriaController {
+
     private final CategoriaService service;
 
     public CategoriaController(CategoriaService service) {
@@ -21,30 +24,36 @@ public class CategoriaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Categoria>> listar() {
+    public ResponseEntity<List<CategoriaResponse>> listar() {
         log.info("GET /api/v1/categorias");
-        return ResponseEntity.ok(service.listar());
+        return ResponseEntity.ok(service.listarTodosComoResponse());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Categoria> obtener(@PathVariable Integer id) {
+    public ResponseEntity<CategoriaResponse> obtener(@PathVariable Integer id) {
         log.info("GET /api/v1/categorias/{}", id);
-        return ResponseEntity.ok(service.obtener(id));
+        return ResponseEntity.ok(service.obtenerComoResponse(id));
     }
 
     @PostMapping
-    public ResponseEntity<Categoria> crear(@RequestBody Categoria request) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CategoriaResponse> crear(
+            @Valid @RequestBody CategoriaRequest request) {
         log.info("POST /api/v1/categorias");
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.crear(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.crearCategoria(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Categoria> actualizar(@PathVariable Integer id, @RequestBody Categoria request) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CategoriaResponse> actualizar(
+            @PathVariable Integer id,
+            @Valid @RequestBody CategoriaRequest request) {
         log.info("PUT /api/v1/categorias/{}", id);
-        return ResponseEntity.ok(service.actualizar(id, request));
+        return ResponseEntity.ok(service.actualizarCategoria(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
         log.info("DELETE /api/v1/categorias/{}", id);
         service.eliminar(id);
