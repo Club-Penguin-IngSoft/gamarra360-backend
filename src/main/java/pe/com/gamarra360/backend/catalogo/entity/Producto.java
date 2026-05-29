@@ -72,15 +72,11 @@ public class Producto {
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<DescuentoVolumen> descuentosVolumen = new ArrayList<>();
 
-    /**
-     * Relación N:M con Categoria vía tabla pivote `producto_categoria`.
-     * Cada producto puede estar en múltiples categorías (HOMBRE + UNISEX, etc.).
-     */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "producto_categoria",
-            joinColumns = @JoinColumn(name = "id_producto"),
-            inverseJoinColumns = @JoinColumn(name = "id_categoria")
-    )
-    private List<Categoria> categorias = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_categoria")
+    private Categoria categoria;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_tipo_producto")
+    private TipoProducto tipoProducto;
 }

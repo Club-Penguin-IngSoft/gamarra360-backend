@@ -17,16 +17,12 @@ public class ProductoResponse {
     private Boolean activo;
     private Integer idTienda;
     private String nombreTienda;
-    private List<CategoriaDto> categorias;
+    private Integer idCategoria;
+    private String nombreCategoria;
+    private Integer idTipoProducto;
+    private String nombreTipoProducto;
     private List<ImagenDto> imagenes;
     private List<VarianteDto> variantes;
-
-    @Getter
-    @Setter
-    public static class CategoriaDto {
-        private Integer idCategoria;
-        private String nombre;
-    }
 
     @Getter
     @Setter
