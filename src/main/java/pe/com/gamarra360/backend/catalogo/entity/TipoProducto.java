@@ -5,6 +5,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Tabla `tipo_producto`.
+ * Cada tipo pertenece a una categoria (e.g. "Polos" -> Hombre).
+ * Relation: tipo_producto.id_categoria -> categorias(id_categoria)
+ */
 @Entity
 @Table(name = "tipo_producto")
 @Getter
@@ -17,10 +22,10 @@ public class TipoProducto {
     @Column(name = "id_tipo_producto")
     private Integer idTipoProducto;
 
-    @Column(name = "nombre")
+    @Column(name = "nombre", nullable = false)
     private String nombre;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_categoria")
+    @JoinColumn(name = "id_categoria", nullable = false)
     private Categoria categoria;
-    }
+}

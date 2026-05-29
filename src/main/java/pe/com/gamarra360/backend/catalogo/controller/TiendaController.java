@@ -5,6 +5,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import pe.com.gamarra360.backend.catalogo.dto.PerfilTiendaPublicaDto;
 import pe.com.gamarra360.backend.catalogo.dto.TiendaInfoResponse;
+import pe.com.gamarra360.backend.catalogo.dto.TiendaResumenDto;
 import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 import pe.com.gamarra360.backend.catalogo.service.TiendaService;
 import pe.com.gamarra360.backend.security.UsuarioPrincipal;
@@ -30,10 +31,10 @@ public class TiendaController {
         return ResponseEntity.ok(service.listar());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Tienda> obtener(@PathVariable Integer id) {
-        log.info("GET /api/v1/tiendas/{}", id);
-        return ResponseEntity.ok(service.obtener(id));
+    @GetMapping("/publico")
+    public ResponseEntity<List<TiendaResumenDto>> listarTiendasPublicas() {
+        log.info("GET /api/v1/tiendas/publico");
+        return ResponseEntity.ok(service.listarTiendasPublicas());
     }
 
     @GetMapping("/publico/{id}")
@@ -42,12 +43,19 @@ public class TiendaController {
         return ResponseEntity.ok(service.obtenerPerfilPublico(id));
     }
 
+    /** Endpoint para el panel del comerciante — devuelve info de su propia tienda. */
     @GetMapping("/mi-tienda")
     @PreAuthorize("hasRole('VENDEDOR')")
     public ResponseEntity<TiendaInfoResponse> obtenerMiTienda(Authentication auth) {
         Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("GET /api/v1/tiendas/mi-tienda - comerciante {}", comercianteId);
         return ResponseEntity.ok(service.obtenerInfoComerciante(comercianteId));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Tienda> obtener(@PathVariable Integer id) {
+        log.info("GET /api/v1/tiendas/{}", id);
+        return ResponseEntity.ok(service.obtener(id));
     }
 
     @PostMapping

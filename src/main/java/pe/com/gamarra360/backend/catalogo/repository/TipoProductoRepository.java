@@ -8,5 +8,7 @@ import java.util.List;
 
 @Repository
 public interface TipoProductoRepository extends JpaRepository<TipoProducto, Integer> {
+
+    /** Todos los tipos que pertenecen a una categoria. */
     List<TipoProducto> findByCategoria_IdCategoria(Integer idCategoria);
 }

@@ -7,12 +7,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import pe.com.gamarra360.backend.catalogo.dto.ImagenRequest;
+import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
 import pe.com.gamarra360.backend.catalogo.entity.*;
 import pe.com.gamarra360.backend.catalogo.repository.*;
+import pe.com.gamarra360.backend.catalogo.entity.Color;
+import pe.com.gamarra360.backend.catalogo.entity.Talla;
+import pe.com.gamarra360.backend.catalogo.entity.TipoProducto;
 import pe.com.gamarra360.backend.catalogo.service.ProductoService;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
 import pe.com.gamarra360.backend.enums.EstadoSolicitud;
@@ -42,6 +47,9 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     private final VarianteProductoRepository varianteProductoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
     private final CotizacionCatalogoRepository cotizacionCatalogoRepository;
+    private final ColorRepository colorRepository;
+    private final TallaRepository tallaRepository;
+    private final EspecificacionRepository especificacionRepository;
 
     public ProductoServiceImpl(
             ProductoRepository productoRepository,
@@ -52,7 +60,10 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             ImagenProductoRepository imagenProductoRepository,
             VarianteProductoRepository varianteProductoRepository,
             DetallePedidoRepository detallePedidoRepository,
-            CotizacionCatalogoRepository cotizacionCatalogoRepository) {
+            CotizacionCatalogoRepository cotizacionCatalogoRepository,
+            ColorRepository colorRepository,
+            TallaRepository tallaRepository,
+            EspecificacionRepository especificacionRepository) {
         super(productoRepository, "Producto");
         this.productoRepository = productoRepository;
         this.comercianteRepository = comercianteRepository;
@@ -63,6 +74,9 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         this.varianteProductoRepository = varianteProductoRepository;
         this.detallePedidoRepository = detallePedidoRepository;
         this.cotizacionCatalogoRepository = cotizacionCatalogoRepository;
+        this.colorRepository = colorRepository;
+        this.tallaRepository = tallaRepository;
+        this.especificacionRepository = especificacionRepository;
     }
 
     @Override
@@ -82,7 +96,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     @Override
     @Transactional(readOnly = true)
     public PaginaResponse<ProductoResponse> listarPaginado(int page, int size) {
-        var pageable = PageRequest.of(page, size);
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "idProducto"));
         var resultado = productoRepository.findByActivoTrue(pageable);
         List<ProductoResponse> contenido = resultado.getContent().stream()
                 .map(this::toResponse)
@@ -123,11 +137,8 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             throw new DatosInvalidosException("La tienda no está verificada para publicar productos.");
         }
 
-        Categoria categoria = categoriaRepository.findById(request.getIdCategoria())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Categoría no encontrada con id " + request.getIdCategoria()));
-
-        TipoProducto tipoProducto = tipoProductoRepository.findById(request.getIdTipoProducto())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Tipo de producto no encontrado con id " + request.getIdTipoProducto()));
+        Categoria cat = resolverCategoria(request.getIdCategoria());
+        TipoProducto tipo = resolverTipoProducto(request.getIdTipoProducto());
 
         Producto producto = new Producto();
         producto.setNombre(request.getNombre());
@@ -136,13 +147,13 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
         producto.setTienda(tienda);
         producto.setActivo(true);
-        producto.setCategoria(categoria);
-        producto.setTipoProducto(tipoProducto);
+        producto.setCategoria(cat);
+        producto.setTipoProducto(tipo);
 
         Producto saved = productoRepository.save(producto);
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), saved);
 
-        return buildResponse(saved, tienda.getNombreComercial(), savedImages, List.of());
+        return buildResponse(saved, tienda.getNombreComercial(), cat, tipo, savedImages, List.of());
     }
 
     @Override
@@ -162,18 +173,15 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             throw new AccessDeniedException("No tienes permiso para editar productos de otra tienda.");
         }
 
-        Categoria categoria = categoriaRepository.findById(request.getIdCategoria())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Categoría no encontrada con id " + request.getIdCategoria()));
-
-        TipoProducto tipoProducto = tipoProductoRepository.findById(request.getIdTipoProducto())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Tipo de producto no encontrado con id " + request.getIdTipoProducto()));
+        Categoria cat = resolverCategoria(request.getIdCategoria());
+        TipoProducto tipo = resolverTipoProducto(request.getIdTipoProducto());
 
         producto.setNombre(request.getNombre());
         producto.setDescripcion(request.getDescripcion());
         producto.setPrecioBase(request.getPrecioBase());
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
-        producto.setCategoria(categoria);
-        producto.setTipoProducto(tipoProducto);
+        producto.setCategoria(cat);
+        producto.setTipoProducto(tipo);
 
         imagenProductoRepository.deleteAll(imagenProductoRepository.findByIdProducto(idProducto));
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), producto);
@@ -184,7 +192,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         productoRepository.save(producto);
 
         return buildResponse(producto, tienda != null ? tienda.getNombreComercial() : null,
-                savedImages, variantes);
+                cat, tipo, savedImages, variantes);
     }
 
     @Override
@@ -219,7 +227,90 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         productoRepository.save(producto);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, List<ProductoResponse>> listarDestacados(int porCategoria) {
+        // Una sola query para traer todos los productos activos
+        List<Producto> todos = productoRepository.findByActivoTrue();
+
+        // Agrupar por nombre de categoría, tomar los N más recientes (ID desc) por grupo
+        java.util.Map<String, List<Producto>> porCat = todos.stream()
+                .filter(p -> p.getCategoria() != null)
+                .collect(Collectors.groupingBy(p -> p.getCategoria().getNombreCategoria()));
+
+        java.util.Map<String, List<ProductoResponse>> resultado = new java.util.LinkedHashMap<>();
+        porCat.forEach((cat, prods) -> {
+            List<ProductoResponse> top = prods.stream()
+                    .sorted(java.util.Comparator.comparing(Producto::getIdProducto).reversed())
+                    .limit(porCategoria)
+                    .map(this::toResponse)
+                    .collect(Collectors.toList());
+            resultado.put(cat, top);
+        });
+
+        return resultado;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OpcionesFiltroDto obtenerOpcionesFiltro() {
+        // Colores activos ordenados alfabéticamente
+        List<String> colores = colorRepository.findAll().stream()
+                .filter(c -> Boolean.TRUE.equals(c.getActivo()))
+                .map(Color::getNombre)
+                .sorted()
+                .collect(Collectors.toList());
+
+        // Materiales distintos desde la tabla especificaciones
+        List<String> materiales = especificacionRepository.findDistinctMateriales();
+
+        // Tallas activas en el orden que vienen de la BD (orden de inserción / id)
+        List<String> tallas = tallaRepository.findAll().stream()
+                .filter(t -> Boolean.TRUE.equals(t.getActivo()))
+                .map(Talla::getTalla)
+                .collect(Collectors.toList());
+
+        // Tipos de producto ordenados alfabéticamente — distinct() evita duplicados
+        // porque la tabla tiene una fila por cada combinación tipo+categoría
+        // (ej. "Polos" para Hombre, "Polos" para Mujer → un solo "Polos" en el filtro)
+        List<String> tiposProducto = tipoProductoRepository.findAll().stream()
+                .map(TipoProducto::getNombre)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        return new OpcionesFiltroDto(colores, materiales, tallas, tiposProducto);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Aplica el mejor descuento por volumen activo (cantidad_minima más baja)
+     * para mostrar el precio "desde" en el catálogo. Devuelve precioBase si no
+     * hay descuentos activos, y null si precioBase es null.
+     */
+    private Double calcularPrecioFinal(Double precioBase, List<DescuentoVolumen> descuentos) {
+        if (precioBase == null) return null;
+        if (descuentos == null || descuentos.isEmpty()) return precioBase;
+        return descuentos.stream()
+                .filter(d -> Boolean.TRUE.equals(d.getActivo()))
+                .min(java.util.Comparator.comparing(DescuentoVolumen::getCantidadMinima))
+                .map(d -> precioBase * (1.0 - d.getPorcentajeDescuento() / 100.0))
+                .orElse(precioBase);
+    }
+
+    private Categoria resolverCategoria(Integer idCategoria) {
+        return categoriaRepository.findById(idCategoria)
+                .orElseThrow(() -> new DatosInvalidosException(
+                        "La categoria no existe con id: " + idCategoria));
+    }
+
+    private TipoProducto resolverTipoProducto(Integer idTipoProducto) {
+        if (idTipoProducto == null) return null;
+        return tipoProductoRepository.findById(idTipoProducto)
+                .orElseThrow(() -> new DatosInvalidosException(
+                        "El tipo de producto no existe con id: " + idTipoProducto));
+    }
 
     private List<ImagenProducto> guardarImagenes(List<ImagenRequest> imagenes, Producto producto) {
         List<ImagenProducto> result = new ArrayList<>();
@@ -237,10 +328,12 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         List<ImagenProducto> imgs = imagenProductoRepository.findByIdProducto(p.getIdProducto());
         List<VarianteProducto> vars = varianteProductoRepository.findByIdProducto(p.getIdProducto());
         Tienda tienda = p.getTienda();
-        return buildResponse(p, tienda != null ? tienda.getNombreComercial() : null, imgs, vars);
+        return buildResponse(p, tienda != null ? tienda.getNombreComercial() : null,
+                p.getCategoria(), p.getTipoProducto(), imgs, vars);
     }
 
     private ProductoResponse buildResponse(Producto p, String nombreTienda,
+                                            Categoria cat, TipoProducto tipo,
                                             List<ImagenProducto> imgs,
                                             List<VarianteProducto> vars) {
         ProductoResponse r = new ProductoResponse();
@@ -248,19 +341,37 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setNombre(p.getNombre());
         r.setDescripcion(p.getDescripcion());
         r.setPrecioBase(p.getPrecioBase());
+        r.setPrecioFinal(calcularPrecioFinal(p.getPrecioBase(), p.getDescuentosVolumen()));
         r.setEsPersonalizable(p.getEsPersonalizable());
         r.setActivo(p.getActivo());
         r.setIdTienda(p.getIdTienda());
         r.setNombreTienda(nombreTienda);
 
-        if (p.getCategoria() != null) {
-            r.setIdCategoria(p.getCategoria().getIdCategoria());
-            r.setNombreCategoria(p.getCategoria().getNombreCategoria());
+        // Categoria como lista de un elemento (compat con frontend)
+        if (cat != null) {
+            ProductoResponse.CategoriaDto d = new ProductoResponse.CategoriaDto();
+            d.setIdCategoria(cat.getIdCategoria());
+            d.setNombre(cat.getNombreCategoria());
+            r.setCategorias(List.of(d));
+        } else {
+            r.setCategorias(List.of());
         }
-        if (p.getTipoProducto() != null) {
-            r.setIdTipoProducto(p.getTipoProducto().getIdTipoProducto());
-            r.setNombreTipoProducto(p.getTipoProducto().getNombre());
+
+        // Tipo de producto
+        if (tipo != null) {
+            ProductoResponse.TipoProductoDto tp = new ProductoResponse.TipoProductoDto();
+            tp.setIdTipoProducto(tipo.getIdTipoProducto());
+            tp.setNombre(tipo.getNombre());
+            r.setTipoProducto(tp);
         }
+
+        // Especificaciones (Material, Tejido, etc.)
+        r.setEspecificaciones(p.getEspecificaciones().stream().map(e -> {
+            ProductoResponse.EspecificacionDto d = new ProductoResponse.EspecificacionDto();
+            d.setNombre(e.getNombre());
+            d.setDescripcion(e.getDescripcion());
+            return d;
+        }).collect(Collectors.toList()));
 
         r.setImagenes(imgs.stream().map(i -> {
             ProductoResponse.ImagenDto d = new ProductoResponse.ImagenDto();
@@ -277,8 +388,9 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setStock(v.getStock());
             d.setPrecioAjustado(v.getPrecioAjustado());
             d.setDisponible(v.getDisponible());
-            d.setIdTalla(v.getTalla() != null ? v.getTalla().getIdTalla() : null);
-            d.setIdColor(v.getColor() != null ? v.getColor().getIdColor() : null);
+            d.setTalla(v.getTalla() != null ? v.getTalla().getTalla() : null);
+            d.setColor(v.getColor() != null ? v.getColor().getNombre() : null);
+            d.setColorHex(v.getColor() != null ? v.getColor().getCodHex() : null);
             return d;
         }).collect(Collectors.toList()));
 

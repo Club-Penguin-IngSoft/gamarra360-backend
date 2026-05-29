@@ -97,11 +97,11 @@ public class ProductoMapper {
     }
 
     /**
-     * Devuelve la categoría "principal" del producto (la primera asociada).
-     * Si la N:M tiene múltiples, simplificamos a una sola para la UI.
+     * Devuelve el nombre de la categoria del producto.
+     * Ahora el schema define una sola FK directa id_categoria.
      */
     private String categoriaPrincipal(Categoria categoria) {
-        if (categoria == null) return null;
+        if (categoria == null) return "UNISEX_ADULTOS";
         return categoria.getNombreCategoria();
     }
 
