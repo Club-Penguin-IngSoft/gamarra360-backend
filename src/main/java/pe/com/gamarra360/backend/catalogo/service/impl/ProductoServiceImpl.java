@@ -37,6 +37,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     private final ComercianteRepository comercianteRepository;
     private final TiendaRepository tiendaRepository;
     private final CategoriaRepository categoriaRepository;
+    private final TipoProductoRepository tipoProductoRepository;
     private final ImagenProductoRepository imagenProductoRepository;
     private final VarianteProductoRepository varianteProductoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
@@ -47,6 +48,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             ComercianteRepository comercianteRepository,
             TiendaRepository tiendaRepository,
             CategoriaRepository categoriaRepository,
+            TipoProductoRepository tipoProductoRepository,
             ImagenProductoRepository imagenProductoRepository,
             VarianteProductoRepository varianteProductoRepository,
             DetallePedidoRepository detallePedidoRepository,
@@ -56,6 +58,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         this.comercianteRepository = comercianteRepository;
         this.tiendaRepository = tiendaRepository;
         this.categoriaRepository = categoriaRepository;
+        this.tipoProductoRepository = tipoProductoRepository;
         this.imagenProductoRepository = imagenProductoRepository;
         this.varianteProductoRepository = varianteProductoRepository;
         this.detallePedidoRepository = detallePedidoRepository;
@@ -113,19 +116,18 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
                     "Tu cuenta de comerciante no está verificada. Contacta al administrador.");
         }
 
-        if (comerciante.getIdTienda() == null
-                || !comerciante.getIdTienda().equals(request.getIdTienda().longValue())) {
-            throw new AccessDeniedException("Solo puedes crear productos en tu propia tienda.");
-        }
-
-        Tienda tienda = tiendaRepository.findById(request.getIdTienda())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Tienda no encontrada"));
+        Tienda tienda = tiendaRepository.findByIdComerciante(comercianteId)
+                .orElseThrow(() -> new DatosInvalidosException("No tienes una tienda asignada."));
 
         if (!Boolean.TRUE.equals(tienda.getVerificada())) {
             throw new DatosInvalidosException("La tienda no está verificada para publicar productos.");
         }
 
-        List<Categoria> cats = resolverCategorias(request.getIdCategorias());
+        Categoria categoria = categoriaRepository.findById(request.getIdCategoria())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Categoría no encontrada con id " + request.getIdCategoria()));
+
+        TipoProducto tipoProducto = tipoProductoRepository.findById(request.getIdTipoProducto())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Tipo de producto no encontrado con id " + request.getIdTipoProducto()));
 
         Producto producto = new Producto();
         producto.setNombre(request.getNombre());
@@ -134,12 +136,13 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
         producto.setTienda(tienda);
         producto.setActivo(true);
-        producto.setCategorias(cats);
+        producto.setCategoria(categoria);
+        producto.setTipoProducto(tipoProducto);
 
         Producto saved = productoRepository.save(producto);
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), saved);
 
-        return buildResponse(saved, tienda.getNombreComercial(), cats, savedImages, List.of());
+        return buildResponse(saved, tienda.getNombreComercial(), savedImages, List.of());
     }
 
     @Override
@@ -151,23 +154,26 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             throw new RecursoNoEncontradoException("Producto no encontrado con id " + idProducto);
         }
 
-        Comerciante comerciante = comercianteRepository.findById(comercianteId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Comerciante no encontrado"));
+        Tienda tiendaComerciante = tiendaRepository.findByIdComerciante(comercianteId)
+                .orElseThrow(() -> new DatosInvalidosException("No tienes una tienda asignada."));
 
         Integer tiendaIdProducto = producto.getIdTienda();
-        if (comerciante.getIdTienda() == null
-                || tiendaIdProducto == null
-                || !comerciante.getIdTienda().equals(tiendaIdProducto.longValue())) {
+        if (!tiendaComerciante.getIdTienda().equals(tiendaIdProducto)) {
             throw new AccessDeniedException("No tienes permiso para editar productos de otra tienda.");
         }
 
-        List<Categoria> cats = resolverCategorias(request.getIdCategorias());
+        Categoria categoria = categoriaRepository.findById(request.getIdCategoria())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Categoría no encontrada con id " + request.getIdCategoria()));
+
+        TipoProducto tipoProducto = tipoProductoRepository.findById(request.getIdTipoProducto())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Tipo de producto no encontrado con id " + request.getIdTipoProducto()));
 
         producto.setNombre(request.getNombre());
         producto.setDescripcion(request.getDescripcion());
         producto.setPrecioBase(request.getPrecioBase());
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
-        producto.setCategorias(cats);
+        producto.setCategoria(categoria);
+        producto.setTipoProducto(tipoProducto);
 
         imagenProductoRepository.deleteAll(imagenProductoRepository.findByIdProducto(idProducto));
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), producto);
@@ -178,7 +184,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         productoRepository.save(producto);
 
         return buildResponse(producto, tienda != null ? tienda.getNombreComercial() : null,
-                cats, savedImages, variantes);
+                savedImages, variantes);
     }
 
     @Override
@@ -186,13 +192,11 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         Producto producto = productoRepository.findById(idProducto)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado con id " + idProducto));
 
-        Comerciante comerciante = comercianteRepository.findById(comercianteId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Comerciante no encontrado"));
+        Tienda tiendaComerciante = tiendaRepository.findByIdComerciante(comercianteId)
+                .orElseThrow(() -> new DatosInvalidosException("No tienes una tienda asignada."));
 
         Integer tiendaIdProducto = producto.getIdTienda();
-        if (comerciante.getIdTienda() == null
-                || tiendaIdProducto == null
-                || !comerciante.getIdTienda().equals(tiendaIdProducto.longValue())) {
+        if (!tiendaComerciante.getIdTienda().equals(tiendaIdProducto)) {
             throw new AccessDeniedException("No tienes permiso para eliminar productos de otra tienda.");
         }
 
@@ -217,14 +221,6 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private List<Categoria> resolverCategorias(List<Integer> ids) {
-        List<Categoria> cats = categoriaRepository.findAllById(ids);
-        if (new HashSet<>(cats).size() != ids.size()) {
-            throw new DatosInvalidosException("Una o más categorías no existen.");
-        }
-        return cats;
-    }
-
     private List<ImagenProducto> guardarImagenes(List<ImagenRequest> imagenes, Producto producto) {
         List<ImagenProducto> result = new ArrayList<>();
         for (ImagenRequest imgReq : imagenes) {
@@ -241,12 +237,11 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         List<ImagenProducto> imgs = imagenProductoRepository.findByIdProducto(p.getIdProducto());
         List<VarianteProducto> vars = varianteProductoRepository.findByIdProducto(p.getIdProducto());
         Tienda tienda = p.getTienda();
-        return buildResponse(p, tienda != null ? tienda.getNombreComercial() : null,
-                p.getCategorias(), imgs, vars);
+        return buildResponse(p, tienda != null ? tienda.getNombreComercial() : null, imgs, vars);
     }
 
     private ProductoResponse buildResponse(Producto p, String nombreTienda,
-                                            List<Categoria> cats, List<ImagenProducto> imgs,
+                                            List<ImagenProducto> imgs,
                                             List<VarianteProducto> vars) {
         ProductoResponse r = new ProductoResponse();
         r.setIdProducto(p.getIdProducto());
@@ -258,12 +253,14 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setIdTienda(p.getIdTienda());
         r.setNombreTienda(nombreTienda);
 
-        r.setCategorias(cats.stream().map(c -> {
-            ProductoResponse.CategoriaDto d = new ProductoResponse.CategoriaDto();
-            d.setIdCategoria(c.getIdCategoria());
-            d.setNombre(c.getNombreCategoria());
-            return d;
-        }).collect(Collectors.toList()));
+        if (p.getCategoria() != null) {
+            r.setIdCategoria(p.getCategoria().getIdCategoria());
+            r.setNombreCategoria(p.getCategoria().getNombreCategoria());
+        }
+        if (p.getTipoProducto() != null) {
+            r.setIdTipoProducto(p.getTipoProducto().getIdTipoProducto());
+            r.setNombreTipoProducto(p.getTipoProducto().getNombre());
+        }
 
         r.setImagenes(imgs.stream().map(i -> {
             ProductoResponse.ImagenDto d = new ProductoResponse.ImagenDto();

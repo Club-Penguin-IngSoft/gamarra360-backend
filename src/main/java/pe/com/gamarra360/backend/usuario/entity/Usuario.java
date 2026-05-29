@@ -31,7 +31,6 @@ public class Usuario {
 
     @Column(name = "email", nullable = false, unique = true)
     private String email;
-
     @Column(name = "contrasenha")
     private String contrasenha;
 

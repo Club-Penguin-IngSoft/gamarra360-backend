@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface ComercianteRepository extends JpaRepository<Comerciante, Integer> {
     List<Comerciante> findByVerificadoFalse();
+
 }
