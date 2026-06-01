@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
@@ -60,6 +61,29 @@ public class ProductoController {
     public ResponseEntity<ProductoResponse> obtener(@PathVariable Integer id) {
         log.info("GET /api/v1/productos/{}", id);
         return ResponseEntity.ok(service.obtenerProductoResponse(id));
+    }
+
+    /**
+     * Devuelve los N productos más recientes por cada categoría activa.
+     * Diseñado para la sección "Catálogo" del inicio — una sola llamada eficiente.
+     * Clave del mapa = nombre de categoría (ej. "Hombre").
+     */
+    @GetMapping("/destacados")
+    public ResponseEntity<java.util.Map<String, List<ProductoResponse>>> destacados(
+            @RequestParam(defaultValue = "8") int porCategoria) {
+        log.info("GET /api/v1/productos/destacados?porCategoria={}", porCategoria);
+        return ResponseEntity.ok(service.listarDestacados(porCategoria));
+    }
+
+    /**
+     * Devuelve las opciones disponibles para los filtros del catálogo
+     * (colores, materiales, tallas, tipos de producto) desde la BD real.
+     * Endpoint público — no requiere autenticación.
+     */
+    @GetMapping("/opciones-filtro")
+    public ResponseEntity<OpcionesFiltroDto> opcionesFiltro() {
+        log.info("GET /api/v1/productos/opciones-filtro");
+        return ResponseEntity.ok(service.obtenerOpcionesFiltro());
     }
 
     /** Lista los productos activos de una tienda específica (RF-15). */

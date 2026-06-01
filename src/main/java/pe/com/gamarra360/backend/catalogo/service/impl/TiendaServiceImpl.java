@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import pe.com.gamarra360.backend.service.AbstractCrudService;
 import pe.com.gamarra360.backend.catalogo.dto.PerfilTiendaPublicaDto;
 import pe.com.gamarra360.backend.catalogo.dto.TiendaInfoResponse;
+import pe.com.gamarra360.backend.catalogo.dto.TiendaResumenDto;
 import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
@@ -15,6 +16,10 @@ import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -37,6 +42,42 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
     @Override
     protected void asignarId(Tienda entidad, Integer id) {
         entidad.setIdTienda(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TiendaResumenDto> listarPublico() {
+        log.info("Listando tiendas verificadas para directorio público");
+        return tiendaRepository.findByVerificadaTrue().stream()
+                .map(t -> {
+                    List<String> categorias = t.getProductos().stream()
+                            .filter(p -> Boolean.TRUE.equals(p.getActivo()))
+                            .map(p -> p.getCategoria() != null ? p.getCategoria().getNombreCategoria() : null)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .sorted()
+                            .collect(Collectors.toList());
+
+                    List<String> tiposProducto = t.getProductos().stream()
+                            .filter(p -> Boolean.TRUE.equals(p.getActivo()))
+                            .map(p -> p.getTipoProducto() != null ? p.getTipoProducto().getNombre() : null)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .sorted()
+                            .collect(Collectors.toList());
+
+                    return new TiendaResumenDto(
+                            t.getIdTienda(),
+                            t.getNombreComercial(),
+                            t.getInformacion(),
+                            t.getFoto(),
+                            t.getVerificada(),
+                            categorias,
+                            null,           // tiposServicio: sin dato en BD; frontend usa ['COMPRA_DIRECTA']
+                            tiposProducto
+                    );
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
