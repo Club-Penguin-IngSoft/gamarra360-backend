@@ -32,9 +32,15 @@ public class TiendaController {
     }
 
     @GetMapping("/publico")
-    public ResponseEntity<List<TiendaResumenDto>> listarTiendasPublicas() {
+    public ResponseEntity<List<TiendaResumenDto>> listarPublico() {
         log.info("GET /api/v1/tiendas/publico");
-        return ResponseEntity.ok(service.listarTiendasPublicas());
+        return ResponseEntity.ok(service.listarPublico());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Tienda> obtener(@PathVariable Integer id) {
+        log.info("GET /api/v1/tiendas/{}", id);
+        return ResponseEntity.ok(service.obtener(id));
     }
 
     @GetMapping("/publico/{id}")
@@ -43,19 +49,12 @@ public class TiendaController {
         return ResponseEntity.ok(service.obtenerPerfilPublico(id));
     }
 
-    /** Endpoint para el panel del comerciante — devuelve info de su propia tienda. */
     @GetMapping("/mi-tienda")
     @PreAuthorize("hasRole('VENDEDOR')")
     public ResponseEntity<TiendaInfoResponse> obtenerMiTienda(Authentication auth) {
         Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("GET /api/v1/tiendas/mi-tienda - comerciante {}", comercianteId);
         return ResponseEntity.ok(service.obtenerInfoComerciante(comercianteId));
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Tienda> obtener(@PathVariable Integer id) {
-        log.info("GET /api/v1/tiendas/{}", id);
-        return ResponseEntity.ok(service.obtener(id));
     }
 
     @PostMapping

@@ -72,18 +72,10 @@ public class Producto {
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<DescuentoVolumen> descuentosVolumen = new ArrayList<>();
 
-    /**
-     * Relación directa con Categoria por FK id_categoria.
-     * El schema define una sola categoria por producto.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_categoria")
     private Categoria categoria;
 
-    /**
-     * Relación directa con TipoProducto por FK id_tipo_producto.
-     * Ejemplo: "Polos", "Blusas", etc. Opcional.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_tipo_producto")
     private TipoProducto tipoProducto;

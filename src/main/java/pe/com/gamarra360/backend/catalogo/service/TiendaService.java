@@ -1,14 +1,20 @@
 package pe.com.gamarra360.backend.catalogo.service;
 
 import pe.com.gamarra360.backend.service.CrudService;
-import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 import pe.com.gamarra360.backend.catalogo.dto.PerfilTiendaPublicaDto;
 import pe.com.gamarra360.backend.catalogo.dto.TiendaInfoResponse;
 import pe.com.gamarra360.backend.catalogo.dto.TiendaResumenDto;
+import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 
 import java.util.List;
 
 public interface TiendaService extends CrudService<Tienda, Integer> {
+    /**
+     * Lista todas las tiendas verificadas con resumen de categorías y tipos de producto.
+     * Endpoint público — no requiere autenticación.
+     */
+    List<TiendaResumenDto> listarPublico();
+
     /**
      * Obtiene el perfil público de una tienda (solo si está verificada)
      * junto con sus productos activos.
@@ -16,9 +22,5 @@ public interface TiendaService extends CrudService<Tienda, Integer> {
      */
     PerfilTiendaPublicaDto obtenerPerfilPublico(Integer idTienda);
 
-    /** Lista todas las tiendas verificadas con resumen de categorías y servicios. */
-    List<TiendaResumenDto> listarTiendasPublicas();
-
-    /** Devuelve info de la tienda del comerciante autenticado (para panel vendedor). */
     TiendaInfoResponse obtenerInfoComerciante(Integer comercianteId);
 }
