@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.PageRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ImagenRequest;
+import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
@@ -27,6 +28,7 @@ import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -42,6 +44,9 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     private final VarianteProductoRepository varianteProductoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
     private final CotizacionCatalogoRepository cotizacionCatalogoRepository;
+    private final ColorRepository colorRepository;
+    private final TallaRepository tallaRepository;
+    private final EspecificacionRepository especificacionRepository;
 
     public ProductoServiceImpl(
             ProductoRepository productoRepository,
@@ -52,7 +57,10 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             ImagenProductoRepository imagenProductoRepository,
             VarianteProductoRepository varianteProductoRepository,
             DetallePedidoRepository detallePedidoRepository,
-            CotizacionCatalogoRepository cotizacionCatalogoRepository) {
+            CotizacionCatalogoRepository cotizacionCatalogoRepository,
+            ColorRepository colorRepository,
+            TallaRepository tallaRepository,
+            EspecificacionRepository especificacionRepository) {
         super(productoRepository, "Producto");
         this.productoRepository = productoRepository;
         this.comercianteRepository = comercianteRepository;
@@ -63,6 +71,9 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         this.varianteProductoRepository = varianteProductoRepository;
         this.detallePedidoRepository = detallePedidoRepository;
         this.cotizacionCatalogoRepository = cotizacionCatalogoRepository;
+        this.colorRepository = colorRepository;
+        this.tallaRepository = tallaRepository;
+        this.especificacionRepository = especificacionRepository;
     }
 
     @Override
@@ -88,6 +99,52 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
                 .map(this::toResponse)
                 .collect(Collectors.toList());
         return new PaginaResponse<>(contenido, page, resultado.getTotalPages(), resultado.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OpcionesFiltroDto obtenerOpcionesFiltro() {
+        List<String> colores = colorRepository.findAll().stream()
+                .map(c -> c.getNombre())
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        List<String> tallas = tallaRepository.findAll().stream()
+                .map(t -> t.getTalla())
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<String> materiales = especificacionRepository.findDistinctMateriales();
+
+        List<String> tiposProducto = tipoProductoRepository.findAll().stream()
+                .map(tp -> tp.getNombre())
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        return new OpcionesFiltroDto(colores, materiales, tallas, tiposProducto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, List<ProductoResponse>> listarDestacados(int porCategoria) {
+        return productoRepository.findByActivoTrue().stream()
+                .filter(p -> p.getCategoria() != null)
+                .collect(Collectors.groupingBy(
+                        p -> p.getCategoria().getNombreCategoria(),
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                lista -> lista.stream()
+                                        .sorted(Comparator.comparing(Producto::getIdProducto).reversed())
+                                        .limit(porCategoria)
+                                        .map(this::toResponse)
+                                        .collect(Collectors.toList())
+                        )
+                ));
     }
 
     @Override
@@ -221,6 +278,16 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
+    private Double calcularPrecioFinal(Double precioBase, List<DescuentoVolumen> descuentos) {
+        if (precioBase == null) return null;
+        if (descuentos == null || descuentos.isEmpty()) return precioBase;
+        return descuentos.stream()
+                .filter(d -> Boolean.TRUE.equals(d.getActivo()))
+                .min(Comparator.comparing(DescuentoVolumen::getCantidadMinima))
+                .map(d -> precioBase * (1.0 - d.getPorcentajeDescuento() / 100.0))
+                .orElse(precioBase);
+    }
+
     private List<ImagenProducto> guardarImagenes(List<ImagenRequest> imagenes, Producto producto) {
         List<ImagenProducto> result = new ArrayList<>();
         for (ImagenRequest imgReq : imagenes) {
@@ -248,6 +315,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setNombre(p.getNombre());
         r.setDescripcion(p.getDescripcion());
         r.setPrecioBase(p.getPrecioBase());
+        r.setPrecioFinal(calcularPrecioFinal(p.getPrecioBase(), p.getDescuentosVolumen()));
         r.setEsPersonalizable(p.getEsPersonalizable());
         r.setActivo(p.getActivo());
         r.setIdTienda(p.getIdTienda());
@@ -279,6 +347,9 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setDisponible(v.getDisponible());
             d.setIdTalla(v.getTalla() != null ? v.getTalla().getIdTalla() : null);
             d.setIdColor(v.getColor() != null ? v.getColor().getIdColor() : null);
+            d.setTalla(v.getTalla() != null ? v.getTalla().getTalla() : null);
+            d.setColor(v.getColor() != null ? v.getColor().getNombre() : null);
+            d.setColorHex(v.getColor() != null ? v.getColor().getCodHex() : null);
             return d;
         }).collect(Collectors.toList()));
 

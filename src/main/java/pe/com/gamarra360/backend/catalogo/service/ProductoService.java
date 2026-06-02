@@ -1,5 +1,6 @@
 package pe.com.gamarra360.backend.catalogo.service;
 
+import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoResponse;
@@ -41,4 +42,17 @@ public interface ProductoService extends CrudService<Producto, Integer> {
 
     /** Eliminación lógica (activo=false) con validación de pedidos/cotizaciones activas (RF-17). */
     void eliminarProducto(Integer idProducto, Integer comercianteId);
+
+    /**
+     * Devuelve los valores disponibles para los filtros del catálogo (colores, materiales,
+     * tallas y tipos de producto) derivados directamente de la BD.
+     */
+    OpcionesFiltroDto obtenerOpcionesFiltro();
+
+    /**
+     * Devuelve los `porCategoria` productos más recientes por cada categoría activa.
+     * Diseñado para la sección "Catálogo" del inicio — una sola query eficiente.
+     * La clave del mapa es el nombre de la categoría (ej. "Hombre", "Mujer").
+     */
+    java.util.Map<String, List<ProductoResponse>> listarDestacados(int porCategoria);
 }

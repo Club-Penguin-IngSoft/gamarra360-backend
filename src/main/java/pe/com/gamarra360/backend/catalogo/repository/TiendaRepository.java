@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface TiendaRepository extends JpaRepository<Tienda, Integer> {
@@ -13,4 +14,6 @@ public interface TiendaRepository extends JpaRepository<Tienda, Integer> {
     Optional<Tienda> findByIdTiendaAndVerificada(@Param("idTienda") Integer idTienda);
 
     Optional<Tienda> findByIdComerciante(Integer idComerciante);
+
+    List<Tienda> findByVerificadaTrue();
 }

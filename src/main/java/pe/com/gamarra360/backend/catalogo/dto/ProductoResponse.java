@@ -13,6 +13,7 @@ public class ProductoResponse {
     private String nombre;
     private String descripcion;
     private Double precioBase;
+    private Double precioFinal;
     private Boolean esPersonalizable;
     private Boolean activo;
     private Integer idTienda;
@@ -42,5 +43,9 @@ public class ProductoResponse {
         private Boolean disponible;
         private Integer idTalla;
         private Integer idColor;
+        // Nombres resueltos para el frontend (evita un segundo round-trip)
+        private String talla;
+        private String color;
+        private String colorHex;
     }
 }
