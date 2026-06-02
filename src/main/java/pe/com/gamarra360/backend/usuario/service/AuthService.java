@@ -60,6 +60,22 @@ public class AuthService {
             );
         }
         Usuario usuario = optUsuario.get();
+        //Verificar estado si es VENDEDOR
+        if (RolEnum.VENDEDOR.equals(usuario.getRol())) {
+            Comerciante comerciante = (Comerciante) usuario;
+
+            // verificado = 0 → pendiente de revisión
+            if (!Boolean.TRUE.equals(comerciante.getVerificado())) {
+                log.info("COMERCIANTE PENDIENTE DE APROBACIÓN: {}", email);
+                return new AuthResponse(null, null, email, "VENDEDOR", false, "PENDIENTE");
+            }
+
+            // verificado = 1, aprobado = 0 → rechazado
+            if (!Boolean.TRUE.equals(comerciante.getAprobado())) {
+                log.info("COMERCIANTE RECHAZADO: {}", email);
+                return new AuthResponse(null, null, email, "VENDEDOR", false, "RECHAZADO");
+            }
+        }
         String token = jwtService.generarToken(new UsuarioPrincipal(usuario));
         return new AuthResponse(
                 token,

@@ -13,6 +13,7 @@ public class AuthResponse {
     private String nombres;
     private String rol;
     private boolean needsRegistration;
+    private String estadoSolicitud; //nuevo: PENDIENTE | RECHAZADO | null
 
     public AuthResponse() {
     }
@@ -39,7 +40,7 @@ public class AuthResponse {
         this.needsRegistration = needsRegistration;
     }
 
-    // Necesario para el caso needsRegistration=true (usuario no existe, sin token ni nombre)
+    // needsRegistration=true — usuario no existe
     public AuthResponse(String token, Integer usuarioId, String email, String rol, boolean needsRegistration) {
         this.token = token;
         this.tipo = "Bearer";
@@ -48,5 +49,18 @@ public class AuthResponse {
         this.nombres = null;
         this.rol = rol;
         this.needsRegistration = needsRegistration;
+    }
+
+    // Comerciante pendiente o rechazado
+    public AuthResponse(String token, Integer usuarioId, String email, String rol,
+                        boolean needsRegistration, String estadoSolicitud) {
+        this.token = token;
+        this.tipo = "Bearer";
+        this.usuarioId = usuarioId;
+        this.email = email;
+        this.nombres = null;
+        this.rol = rol;
+        this.needsRegistration = needsRegistration;
+        this.estadoSolicitud = estadoSolicitud;
     }
 }
