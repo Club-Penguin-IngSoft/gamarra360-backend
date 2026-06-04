@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface DetallePedidoRepository extends JpaRepository<DetallePedido, Long> {
 
+    List<DetallePedido> findByPedidoId(Long pedidoId);
+
     @Query("SELECT COUNT(dp) > 0 FROM DetallePedido dp " +
            "JOIN dp.pedido p " +
            "JOIN dp.varianteProducto vp " +

@@ -3,6 +3,7 @@ package pe.com.gamarra360.backend.pedido.controller;
 import lombok.extern.slf4j.Slf4j;
 
 import pe.com.gamarra360.backend.pedido.entity.DetallePedido;
+import pe.com.gamarra360.backend.pedido.entity.DetallePedidoResponse;
 import pe.com.gamarra360.backend.pedido.service.DetallePedidoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +43,12 @@ public class DetallePedidoController {
     public ResponseEntity<DetallePedido> actualizar(@PathVariable Long id, @RequestBody DetallePedido request) {
         log.info("PUT /api/v1/detalles-pedido/{}", id);
         return ResponseEntity.ok(service.actualizar(id, request));
+    }
+
+    @GetMapping("/pedido/{pedidoId}")
+    public ResponseEntity<List<DetallePedidoResponse>> listarPorPedido(@PathVariable Long pedidoId) {
+        log.info("GET /api/v1/detalles-pedido/pedido/{}", pedidoId);
+        return ResponseEntity.ok(service.listarPorPedido(pedidoId));
     }
 
     @DeleteMapping("/{id}")
