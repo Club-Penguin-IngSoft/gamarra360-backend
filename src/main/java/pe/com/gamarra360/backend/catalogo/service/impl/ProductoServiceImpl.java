@@ -319,6 +319,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setEsPersonalizable(p.getEsPersonalizable());
         r.setActivo(p.getActivo());
         r.setIdTienda(p.getIdTienda());
+        r.setIdComerciante(p.getTienda() != null ? p.getTienda().getIdComerciante() : null);
         r.setNombreTienda(nombreTienda);
 
         if (p.getCategoria() != null) {

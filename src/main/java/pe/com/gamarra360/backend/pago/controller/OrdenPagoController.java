@@ -3,6 +3,7 @@ package pe.com.gamarra360.backend.pago.controller;
 import lombok.extern.slf4j.Slf4j;
 
 import pe.com.gamarra360.backend.pago.entity.OrdenPago;
+import pe.com.gamarra360.backend.pago.entity.OrdenPagoDetalleResponse;
 import pe.com.gamarra360.backend.pago.service.OrdenPagoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +43,18 @@ public class OrdenPagoController {
     public ResponseEntity<OrdenPago> actualizar(@PathVariable Long id, @RequestBody OrdenPago request) {
         log.info("PUT /api/v1/ordenes-pago/{}", id);
         return ResponseEntity.ok(service.actualizar(id, request));
+    }
+
+    @GetMapping("/cliente/{clienteId}")
+    public ResponseEntity<List<OrdenPago>> listarPorCliente(@PathVariable Integer clienteId) {
+        log.info("GET /api/v1/ordenes-pago/cliente/{}", clienteId);
+        return ResponseEntity.ok(service.listarPorCliente(clienteId));
+    }
+
+    @GetMapping("/{id}/detalle")
+    public ResponseEntity<OrdenPagoDetalleResponse> obtenerDetalle(@PathVariable Long id) {
+        log.info("GET /api/v1/ordenes-pago/{}/detalle", id);
+        return ResponseEntity.ok(service.obtenerDetalle(id));
     }
 
     @DeleteMapping("/{id}")
