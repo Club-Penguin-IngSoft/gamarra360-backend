@@ -1,5 +1,6 @@
 package pe.com.gamarra360.backend.usuario.controller;
 
+import com.stripe.model.Account;
 import lombok.extern.slf4j.Slf4j;
 
 import pe.com.gamarra360.backend.usuario.entity.Comerciante;
@@ -9,16 +10,22 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.stripe.exception.StripeException;
+import pe.com.gamarra360.backend.usuario.dto.OnboardingLinkResponse;
+import pe.com.gamarra360.backend.usuario.service.ComercianteStripeService;
+
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/comerciantes")
 @Slf4j
 public class ComercianteController {
     private final ComercianteService service;
-
-    public ComercianteController(ComercianteService service) {
+    private final ComercianteStripeService stripeService;
+    public ComercianteController(ComercianteService service, ComercianteStripeService stripeService) {
         this.service = service;
+        this.stripeService=stripeService;
     }
 
     @GetMapping
@@ -72,5 +79,71 @@ public class ComercianteController {
         log.info("DELETE /api/v1/comerciantes/{}/rechazar", id);
         service.rechazar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/stripe/onboarding")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<OnboardingLinkResponse> generarOnboarding(
+            @PathVariable Integer id) {
+        log.info("POST /api/v1/comerciantes/{}/stripe/onboarding", id);
+        try {
+            return ResponseEntity.ok(stripeService.generarLinkOnboarding(id));
+        } catch (StripeException e) {
+            log.error("Error generando onboarding Stripe para comerciante {}: {}",
+                    id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // Stripe redirige aquí cuando el comerciante completa el formulario
+    @GetMapping("/stripe/completado")
+    public ResponseEntity<String> onboardingCompletado(
+            @RequestParam String account) {
+        log.info("GET /api/v1/comerciantes/stripe/completado - account: {}", account);
+        try {
+            stripeService.completarOnboarding(account);
+            return ResponseEntity.ok("Onboarding completado correctamente.");
+        } catch (StripeException e) {
+            log.error("Error completando onboarding: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/stripe/balance")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<?> obtenerBalance(@PathVariable Integer id) {
+        try {
+            return ResponseEntity.ok(stripeService.obtenerBalance(id));
+        } catch (StripeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/stripe/status")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<Map<String, Object>> stripeStatus(@PathVariable Integer id) {
+        try {
+            Comerciante comerciante = service.obtener(id);
+            if (comerciante.getStripeAccountId() == null) {
+                return ResponseEntity.ok(Map.of("yaCompletado", false));
+            }
+            Account account = Account.retrieve(comerciante.getStripeAccountId());
+            return ResponseEntity.ok(Map.of(
+                    "yaCompletado", Boolean.TRUE.equals(account.getDetailsSubmitted())
+            ));
+        } catch (StripeException e) {
+            return ResponseEntity.ok(Map.of("yaCompletado", false));
+        }
+    }
+    // ComercianteController.java
+    @GetMapping("/{id}/stripe/dashboard")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<Map<String, String>> obtenerDashboardLink(@PathVariable Integer id) {
+        try {
+            return ResponseEntity.ok(stripeService.generarDashboardLink(id));
+        } catch (StripeException e) {
+            log.error("Error generando dashboard Stripe: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

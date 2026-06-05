@@ -9,4 +9,5 @@ import java.util.List;
 public interface OrdenPagoService extends CrudService<OrdenPago, Long> {
     List<OrdenPago> listarPorCliente(Integer clienteId);
     OrdenPagoDetalleResponse obtenerDetalle(Long ordenPagoId);
+    void marcarComoPagado(Long ordenId);
 }
