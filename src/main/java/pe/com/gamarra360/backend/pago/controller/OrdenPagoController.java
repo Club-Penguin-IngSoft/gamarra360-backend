@@ -63,4 +63,10 @@ public class OrdenPagoController {
         service.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+    @PatchMapping("/{id}/marcar-pagado")
+    public ResponseEntity<Void> marcarPagado(@PathVariable Long id) {
+        log.info("PATCH /api/v1/ordenes-pago/{}/marcar-pagado", id);
+        service.marcarComoPagado(id);
+        return ResponseEntity.noContent().build();
+    }
 }

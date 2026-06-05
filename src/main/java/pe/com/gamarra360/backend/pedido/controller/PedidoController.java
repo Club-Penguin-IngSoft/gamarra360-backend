@@ -34,7 +34,8 @@ public class PedidoController {
 
     @PostMapping
     public ResponseEntity<Pedido> crear(@RequestBody Pedido request) {
-        log.info("POST /api/v1/pedidos");
+        log.info("POST /api/v1/pedidos - tipoEntrega: {}, direccionEntrega: {}, total: {}",
+                request.getTipoEntrega(), request.getDireccionEntrega(), request.getTotal());
         return ResponseEntity.status(HttpStatus.CREATED).body(service.crear(request));
     }
 

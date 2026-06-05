@@ -1,12 +1,21 @@
 package pe.com.gamarra360.backend.pago.controller;
 
+import com.stripe.exception.SignatureVerificationException;
+import com.stripe.exception.StripeException;
+import com.stripe.model.Event;
+import com.stripe.model.EventDataObjectDeserializer;
+import com.stripe.model.PaymentIntent;
+import com.stripe.net.Webhook;
 import lombok.extern.slf4j.Slf4j;
-
-import pe.com.gamarra360.backend.pago.entity.Pago;
-import pe.com.gamarra360.backend.pago.service.PagoService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import pe.com.gamarra360.backend.pago.dto.CrearPagoStripeRequest;
+import pe.com.gamarra360.backend.pago.dto.CrearPagoStripeResponse;
+import pe.com.gamarra360.backend.pago.entity.Pago;
+import pe.com.gamarra360.backend.pago.service.PagoService;
+import pe.com.gamarra360.backend.pago.service.impl.StripePaymentService;
 
 import java.util.List;
 
@@ -14,10 +23,17 @@ import java.util.List;
 @RequestMapping("/api/v1/pagos")
 @Slf4j
 public class PagoController {
-    private final PagoService service;
 
-    public PagoController(PagoService service) {
-        this.service = service;
+    private final PagoService          service;
+    private final StripePaymentService stripePaymentService;
+
+    @Value("${stripe.webhook-secret}")
+    private String webhookSecret;
+
+    // Constructor con ambas dependencias inyectadas
+    public PagoController(PagoService service, StripePaymentService stripePaymentService) {
+        this.service               = service;
+        this.stripePaymentService  = stripePaymentService;
     }
 
     @GetMapping
@@ -49,5 +65,53 @@ public class PagoController {
         log.info("DELETE /api/v1/pagos/{}", id);
         service.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/crear-intent")
+    public ResponseEntity<CrearPagoStripeResponse> crearIntent(
+            @RequestBody CrearPagoStripeRequest request) {
+        log.info("POST /api/v1/pagos/crear-intent - ordenPagoId: {}", request.ordenPagoId());
+        try {
+            return ResponseEntity.ok(stripePaymentService.crearPaymentIntent(request));
+        } catch (StripeException e) {
+            log.error("Stripe error code: {} mensaje: {}", e.getCode(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).build();
+        } catch (Exception e) {
+            log.error("Error inesperado al crear intent: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/webhook")
+    public ResponseEntity<String> webhook(
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String sigHeader) {
+        log.info("POST /api/v1/pagos/webhook");
+        try {
+            Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+
+            if ("payment_intent.succeeded".equals(event.getType())) {
+                // Deserializa de forma compatible con cualquier versión de la API
+                EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+
+                PaymentIntent intent;
+                if (deserializer.getObject().isPresent()) {
+                    intent = (PaymentIntent) deserializer.getObject().get();
+                } else {
+                    // Fallback: deserializa manualmente desde el JSON raw
+                    intent = (PaymentIntent) deserializer.deserializeUnsafe();
+                }
+
+                stripePaymentService.procesarPagoConfirmado(intent);
+            }
+
+            return ResponseEntity.ok("OK");
+        } catch (SignatureVerificationException e) {
+            log.warn("Firma webhook inválida: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Firma inválida");
+        } catch (Exception e) {
+            log.error("Error procesando webhook: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }
