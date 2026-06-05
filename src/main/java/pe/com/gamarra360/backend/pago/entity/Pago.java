@@ -25,6 +25,10 @@ public class Pago {
     private EstadoPago estado;
     private String metodo;
     private LocalDateTime fecha;
+    @Column(name= "stripe_payment_intent_id", unique=true)
+    private String stripePaymentIntentId;
+    @Column(name="stripe_client_secret")
+    private String stripeClientSecret;//Solo devuelve al front//
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "orden_pago_id", insertable = false, updatable = false)
     @JsonIgnore
