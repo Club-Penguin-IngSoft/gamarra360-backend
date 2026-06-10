@@ -10,4 +10,6 @@ public interface VarianteProductoService extends CrudService<VarianteProducto, I
     StockResponse actualizarStock(Integer idVariante, StockUpdateRequest request);
 
     StockResponse consultarStock(Integer idVariante);
+
+    void descontarStock(Integer idVariante, Integer cantidad);
 }
