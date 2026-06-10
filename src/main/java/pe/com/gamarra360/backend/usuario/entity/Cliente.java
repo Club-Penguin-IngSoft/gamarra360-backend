@@ -22,4 +22,12 @@ public class Cliente extends Usuario {
 
     public Cliente() {
     }
+    @Column(name = "direccion_entrega", length = 500)
+    private String direccionEntrega;
+
+    @Column(name = "alertas_correo")
+    private Boolean alertasCorreo = true;
+
+    @Column(name = "notificaciones_push")
+    private Boolean notificacionesPush = false;
 }

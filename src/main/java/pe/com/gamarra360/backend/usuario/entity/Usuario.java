@@ -57,4 +57,5 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     @Column(name = "rol")
     private RolEnum rol;
+
 }
