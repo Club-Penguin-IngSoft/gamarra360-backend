@@ -86,22 +86,24 @@ public class PagoController {
     public ResponseEntity<String> webhook(
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
-        log.info("POST /api/v1/pagos/webhook");
+        log.info("POST /api/v1/pagos/webhook — tipo evento pendiente de parsear");
         try {
             Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+            log.info("Evento Stripe recibido: {}", event.getType()); // ← ¿llega aquí?
 
             if ("payment_intent.succeeded".equals(event.getType())) {
-                // Deserializa de forma compatible con cualquier versión de la API
-                EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+                log.info("Procesando payment_intent.succeeded"); // ← ¿llega aquí?
 
+                EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
                 PaymentIntent intent;
                 if (deserializer.getObject().isPresent()) {
                     intent = (PaymentIntent) deserializer.getObject().get();
                 } else {
-                    // Fallback: deserializa manualmente desde el JSON raw
+                    log.warn("Deserializer vacío, usando deserializeUnsafe"); // ← ¿cae aquí?
                     intent = (PaymentIntent) deserializer.deserializeUnsafe();
                 }
 
+                log.info("Intent id={} metadata={}", intent.getId(), intent.getMetadata()); // ← ¿metadata tiene orden_pago_id?
                 stripePaymentService.procesarPagoConfirmado(intent);
             }
 
@@ -110,7 +112,7 @@ public class PagoController {
             log.warn("Firma webhook inválida: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Firma inválida");
         } catch (Exception e) {
-            log.error("Error procesando webhook: {}", e.getMessage());
+            log.error("Error procesando webhook: {}", e.getMessage(), e); // ← el ", e" al final imprime el stacktrace completo
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
