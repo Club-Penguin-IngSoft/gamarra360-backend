@@ -40,16 +40,16 @@ public class OrdenPagoServiceImpl extends AbstractCrudService<OrdenPago, Long> i
         this.comercianteRepository = comercianteRepository;
     }
 
-    @Override
-    @Transactional
-    public void marcarComoPagado(Long ordenId) {
-        OrdenPago orden = ordenPagoRepository.findById(ordenId)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "Orden no encontrada: " + ordenId));
-        orden.confirmarPago(); // usa el mismo método que el webhook
-        ordenPagoRepository.save(orden);
-        log.info("OrdenPago {} marcada como PAGADA desde frontend.", ordenId);
-    }
+    //@Override
+    //@Transactional
+    //public void marcarComoPagado(Long ordenId) {
+        //OrdenPago orden = ordenPagoRepository.findById(ordenId)
+                //.orElseThrow(() -> new RecursoNoEncontradoException(
+                        //"Orden no encontrada: " + ordenId));
+        //orden.confirmarPago(); // usa el mismo metodo que el webhook
+        //ordenPagoRepository.save(orden);
+        //log.info("OrdenPago {} marcada como PAGADA desde frontend.", ordenId);
+    //}
 
     @Override
     protected Logger getLog() { return log; }

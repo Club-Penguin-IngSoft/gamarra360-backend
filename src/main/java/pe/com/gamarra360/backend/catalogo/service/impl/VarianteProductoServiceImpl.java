@@ -60,4 +60,31 @@ public class VarianteProductoServiceImpl extends AbstractCrudService<VariantePro
         r.setIdProducto(v.getProducto() != null ? v.getProducto().getIdProducto() : null);
         return r;
     }
+
+    @Override
+    @Transactional
+    public void descontarStock(Integer idVariante, Integer cantidad) {
+        VarianteProducto variante = varianteProductoRepository
+                .findByIdWithLock(idVariante)  // bloqueo pesimista
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Variante no encontrada: " + idVariante));
+
+        if (variante.getStock() < cantidad) {
+            throw new IllegalStateException(
+                    "Stock insuficiente para variante " + idVariante +
+                            ". Disponible: " + variante.getStock() + ", solicitado: " + cantidad);
+        }
+
+        int nuevoStock = variante.getStock() - cantidad;
+        variante.setStock(nuevoStock);
+
+        // Si llega a 0, marca como no disponible
+        if (nuevoStock <= 0) {
+            variante.setDisponible(false);
+            variante.setStock(0);
+        }
+
+        varianteProductoRepository.save(variante);
+        log.info("Stock variante {} descontado: {} → {}", idVariante, variante.getStock() + cantidad, nuevoStock);
+    }
 }
