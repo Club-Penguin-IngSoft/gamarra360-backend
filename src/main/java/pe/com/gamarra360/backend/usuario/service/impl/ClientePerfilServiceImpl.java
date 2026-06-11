@@ -93,8 +93,8 @@ public class ClientePerfilServiceImpl implements ClientePerfilService {
 
         actualizarSiTieneTexto(request.nombres(), cliente::setNombres);
         actualizarSiTieneTexto(request.primerApellido(), cliente::setPrimerApellido);
-        actualizarSiTieneTexto(request.segundoApellido(), cliente::setSegundoApellido);
-        actualizarSiTieneTexto(request.telefono(), cliente::setTelefono);
+        actualizarPermitiendoVacio(request.segundoApellido(), cliente::setSegundoApellido);
+        actualizarPermitiendoVacio(request.telefono(), cliente::setTelefono);
         actualizarSiTieneTexto(request.dni(), cliente::setDni);
         actualizarSiTieneTexto(request.tipoDocumento(), cliente::setTipoDocumento);
         actualizarSiTieneTexto(request.direccionEntrega(), cliente::setDireccionEntrega);
@@ -596,10 +596,10 @@ public class ClientePerfilServiceImpl implements ClientePerfilService {
     }
 
     private void sincronizarCamposCliente(Cliente cliente) {
-        if (!tieneTexto(cliente.getNombre()) && tieneTexto(cliente.getNombres())) {
+        if (tieneTexto(cliente.getNombres())) {
             cliente.setNombre(cliente.getNombres().trim());
         }
-        if (!tieneTexto(cliente.getApellido()) && tieneTexto(cliente.getPrimerApellido())) {
+        if (tieneTexto(cliente.getPrimerApellido())) {
             cliente.setApellido(cliente.getPrimerApellido().trim());
         }
     }
@@ -624,6 +624,13 @@ public class ClientePerfilServiceImpl implements ClientePerfilService {
     private void actualizarSiTieneTexto(String valor, java.util.function.Consumer<String> setter) {
         if (tieneTexto(valor)) {
             setter.accept(valor.trim());
+        }
+    }
+
+    private void actualizarPermitiendoVacio(String valor, java.util.function.Consumer<String> setter) {
+        if (valor != null) {
+            String limpio = valor.trim();
+            setter.accept(limpio.isEmpty() ? null : limpio);
         }
     }
 
