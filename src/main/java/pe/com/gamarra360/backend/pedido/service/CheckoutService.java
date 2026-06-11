@@ -60,7 +60,7 @@ public class CheckoutService {
         pedido.setTotal(dto.total());
         pedido.setTipoEntrega(TipoEntrega.valueOf(dto.tipoEntrega()));
         pedido.setDireccionEntrega(dto.direccionEntrega());
-        // @PrePersist asigna estado=PENDIENTE_CONFIRMACION y fecha=now()
+        // @PrePersist asigna estado=RECIBIDO y fecha=now()
         pedido = pedidoRepository.save(pedido);
 
         log.info("Pedido #{} creado", pedido.getId());

@@ -36,4 +36,7 @@ public class PersonalizacionRequest {
      * Generada por el frontend antes de enviar.
      */
     private String descripcion;
+
+    /** Cantidad de unidades solicitadas (default 1 si no se envía). */
+    private Integer cantidad;
 }
