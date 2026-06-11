@@ -1,9 +1,12 @@
 package pe.com.gamarra360.backend.usuario.service.impl;
 
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 import pe.com.gamarra360.backend.service.AbstractCrudService;
+import pe.com.gamarra360.backend.usuario.dto.ActualizarPerfilRequest;
 import pe.com.gamarra360.backend.usuario.entity.Usuario;
+import pe.com.gamarra360.backend.usuario.repository.ClienteRepository;
 import pe.com.gamarra360.backend.usuario.repository.UsuarioRepository;
 import pe.com.gamarra360.backend.usuario.service.UsuarioService;
 import org.slf4j.Logger;
@@ -12,9 +15,13 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class UsuarioServiceImpl extends AbstractCrudService<Usuario, Integer> implements UsuarioService {
-
-    public UsuarioServiceImpl(UsuarioRepository repository) {
+    private final UsuarioRepository usuarioRepository;
+    private final ClienteRepository clienteRepository;
+    public UsuarioServiceImpl(UsuarioRepository repository,
+                              ClienteRepository clienteRepository) {
         super(repository, "Usuario");
+        this.usuarioRepository = repository;
+        this.clienteRepository = clienteRepository;
     }
 
     @Override
@@ -25,5 +32,25 @@ public class UsuarioServiceImpl extends AbstractCrudService<Usuario, Integer> im
     @Override
     protected void asignarId(Usuario entidad, Integer id) {
         entidad.setUsuarioId(id);
+    }
+
+    @Override
+    @Transactional
+    public void actualizarPerfil(Integer id, ActualizarPerfilRequest request) {
+        //tabla usuarios
+        usuarioRepository.actualizarPerfil(
+                id,
+                request.nombres(),
+                request.primerApellido(),
+                request.segundoApellido(),
+                request.telefono()
+        );
+
+        //tabla clientes (nombre = nombres, apellido = primerApellido)
+        clienteRepository.actualizarPerfil(
+                id,
+                request.nombres(),
+                request.primerApellido()
+        );
     }
 }
