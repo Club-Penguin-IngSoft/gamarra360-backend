@@ -23,6 +23,8 @@ public class DetallePedido {
     private Integer idVarianteProducto;
     private Integer cantidad;
     private Double precio;
+    @Column(name = "personalizacion_id")
+    private Long personalizacionId;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pedido_id", insertable = false, updatable = false)
     @JsonIgnore

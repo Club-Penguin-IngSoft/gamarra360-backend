@@ -41,4 +41,5 @@ public abstract class Solicitud {
     @PrePersist void prePersist() { if (fechaCreacion == null) fechaCreacion = LocalDateTime.now(); if (estado == null) estado = EstadoSolicitud.PENDIENTE; }
     public void cancelar() { estado = EstadoSolicitud.RECHAZADA; }
     public void marcarComoRespondida() { estado = EstadoSolicitud.RESPONDIDA; }
+    public void aceptar() { estado = EstadoSolicitud.ACEPTADA; }
 }

@@ -25,6 +25,7 @@ public class Personalizacion extends Solicitud {
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_personalizacion")
     private TipoTrabajo tipoPersonalizacion;
+    private Integer cantidad;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "detalle_producto_id", insertable = false, updatable = false)
     @JsonIgnore

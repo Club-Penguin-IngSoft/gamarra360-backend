@@ -19,12 +19,15 @@ public record OrdenPagoDetalleResponse(
             String tipoEntrega,
             String direccionEntrega,
             Double total,
+            String fecha,
+            String fechaActualizacion,
             List<DetalleResumen> detalles
     ) {}
 
     public record DetalleResumen(
             Long id,
             Integer idVarianteProducto,
+            Integer idProducto,
             String nombreProducto,
             String imagenUrl,
             String talla,

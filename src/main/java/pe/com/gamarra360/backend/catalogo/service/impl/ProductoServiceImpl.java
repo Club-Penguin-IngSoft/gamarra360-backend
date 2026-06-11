@@ -259,7 +259,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
         boolean tienePedidos = detallePedidoRepository.existePedidoActivoPorProducto(
                 idProducto,
-                List.of(EstadoPedido.PENDIENTE_CONFIRMACION, EstadoPedido.EN_PREPARACION));
+                List.of(EstadoPedido.RECIBIDO, EstadoPedido.EN_PREPARACION, EstadoPedido.EN_CAMINO, EstadoPedido.LISTO_PARA_ENTREGA));
 
         boolean tieneCotizaciones = cotizacionCatalogoRepository.existeCotizacionActivaPorProducto(
                 idProducto,

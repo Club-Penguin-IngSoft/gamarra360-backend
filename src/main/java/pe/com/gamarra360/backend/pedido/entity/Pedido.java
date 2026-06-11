@@ -39,6 +39,8 @@ public class Pedido {
     @Column(name = "direccion_entrega")
     private String direccionEntrega;
     private LocalDateTime fecha;
+    @Column(name = "fecha_actualizacion")
+    private LocalDateTime fechaActualizacion;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_id", insertable = false, updatable = false)
     @JsonIgnore
@@ -55,8 +57,8 @@ public class Pedido {
     @JsonIgnore
     private List<DetallePedido> listaDetalles = new ArrayList<>();
     public Pedido() { }
-    @PrePersist void prePersist() { if (fecha == null) fecha = LocalDateTime.now(); if (estado == null) estado = EstadoPedido.PENDIENTE_CONFIRMACION; }
+    @PrePersist void prePersist() { if (fecha == null) fecha = LocalDateTime.now(); if (fechaActualizacion == null) fechaActualizacion = fecha; if (estado == null) estado = EstadoPedido.RECIBIDO; }
     public Double calcularTotal() { return listaDetalles == null ? 0.0 : listaDetalles.stream().mapToDouble(DetallePedido::calcularSubtotal).sum(); }
-    public void cambiarEstado(EstadoPedido estado) { this.estado = estado; }
+    public void cambiarEstado(EstadoPedido estado) { this.estado = estado; this.fechaActualizacion = LocalDateTime.now(); }
     public Boolean validarEntrega() { return tipoEntrega != null && (tipoEntrega == TipoEntrega.RECOJO_TIENDA || direccionEntrega != null); }
 }

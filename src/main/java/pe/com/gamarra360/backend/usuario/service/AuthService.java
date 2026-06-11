@@ -183,7 +183,7 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new DatosInvalidosException("Credenciales invalidas."));
         String token = jwtService.generarToken(new UsuarioPrincipal(usuario));
-        return new AuthResponse(token, usuario.getUsuarioId(), usuario.getEmail(), usuario.getRol().name());
+        return new AuthResponse(token, usuario.getUsuarioId(), usuario.getEmail(), usuario.getNombres(), usuario.getRol().name(), false);
     }
 
     private Usuario crearUsuarioPorRol(RegistroUsuarioRequest request) {

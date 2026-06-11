@@ -7,10 +7,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface DetallePedidoRepository extends JpaRepository<DetallePedido, Long> {
 
     List<DetallePedido> findByPedidoId(Long pedidoId);
+
+    Optional<DetallePedido> findByPersonalizacionId(Long personalizacionId);
 
     @Query("SELECT COUNT(dp) > 0 FROM DetallePedido dp " +
            "JOIN dp.pedido p " +
