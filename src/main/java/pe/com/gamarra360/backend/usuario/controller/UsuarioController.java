@@ -2,6 +2,7 @@ package pe.com.gamarra360.backend.usuario.controller;
 
 import lombok.extern.slf4j.Slf4j;
 
+import pe.com.gamarra360.backend.usuario.dto.ActualizarPerfilRequest;
 import pe.com.gamarra360.backend.usuario.entity.Usuario;
 import pe.com.gamarra360.backend.usuario.service.UsuarioService;
 import org.springframework.http.HttpStatus;
@@ -48,6 +49,14 @@ public class UsuarioController {
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
         log.info("DELETE /api/v1/usuarios/{}", id);
         service.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+    @PatchMapping("/{id}/perfil")
+    public ResponseEntity<Void> actualizarPerfil(
+            @PathVariable Integer id,
+            @RequestBody ActualizarPerfilRequest request) {
+        log.info("PATCH /api/v1/usuarios/{}/perfil", id);
+        service.actualizarPerfil(id, request);
         return ResponseEntity.noContent().build();
     }
 }

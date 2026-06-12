@@ -112,6 +112,8 @@ public class OrdenPagoServiceImpl extends AbstractCrudService<OrdenPago, Long> i
                 p.getTipoEntrega() != null ? p.getTipoEntrega().name() : null,
                 p.getDireccionEntrega(),
                 p.getTotal(),
+                p.getFecha() != null ? p.getFecha().toString() : null,
+                p.getFechaActualizacion() != null ? p.getFechaActualizacion().toString() : null,
                 detalles
         );
     }
@@ -130,6 +132,7 @@ public class OrdenPagoServiceImpl extends AbstractCrudService<OrdenPago, Long> i
         return new OrdenPagoDetalleResponse.DetalleResumen(
                 dp.getId(),
                 dp.getIdVarianteProducto(),
+                v != null && v.getProducto() != null ? v.getProducto().getIdProducto() : null,
                 v != null && v.getProducto() != null ? v.getProducto().getNombre() : null,
                 imagenUrl,
                 v != null && v.getTalla() != null ? v.getTalla().getTalla() : null,

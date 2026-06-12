@@ -77,7 +77,7 @@ public class AuthService {
             }
         }
         String token = jwtService.generarToken(new UsuarioPrincipal(usuario));
-        return new AuthResponse(
+        AuthResponse response = new AuthResponse(
                 token,
                 usuario.getUsuarioId(),
                 usuario.getEmail(),
@@ -85,6 +85,10 @@ public class AuthService {
                 usuario.getRol().name(),
                 false
         );
+        if (usuario instanceof Cliente cliente) {
+            response.setDireccionEntrega(cliente.getDireccionEntrega());
+        }
+        return response;
     }
 
     @Transactional
@@ -183,7 +187,7 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new DatosInvalidosException("Credenciales invalidas."));
         String token = jwtService.generarToken(new UsuarioPrincipal(usuario));
-        return new AuthResponse(token, usuario.getUsuarioId(), usuario.getEmail(), usuario.getRol().name());
+        return new AuthResponse(token, usuario.getUsuarioId(), usuario.getEmail(), usuario.getNombres(), usuario.getRol().name(), false);
     }
 
     private Usuario crearUsuarioPorRol(RegistroUsuarioRequest request) {
