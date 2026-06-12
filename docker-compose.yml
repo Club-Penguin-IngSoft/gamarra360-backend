@@ -1,0 +1,30 @@
+# Orquesta backend + frontend.
+# Requiere que ambos repos estén clonados como hermanos:
+#   ~/gamarra360-backend   (aquí vive este archivo)
+#   ~/gamarra360-frontend
+#
+# Antes de levantar, crear en el servidor:
+#   - gamarra360-backend/src/main/resources/application.properties
+#   - gamarra360-frontend/.env   (VITE_API_BASE_URL, VITE_GOOGLE_CLIENT_ID, VITE_STRIPE_PUBLISHABLE_KEY)
+#
+# Levantar:  docker compose up -d --build
+services:
+  backend:
+    build:
+      context: .
+    image: gamarra360-backend
+    container_name: gamarra360-backend
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../gamarra360-frontend
+    image: gamarra360-frontend
+    container_name: gamarra360-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
