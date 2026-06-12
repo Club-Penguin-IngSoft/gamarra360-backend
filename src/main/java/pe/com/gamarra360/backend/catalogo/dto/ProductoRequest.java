@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -35,4 +36,6 @@ public class ProductoRequest {
     @NotEmpty(message = "Debe incluir al menos una imagen")
     @Valid
     private List<ImagenRequest> imagenes;
+
+    private List<EspecificacionProductoDto> especificaciones = new ArrayList<>();
 }

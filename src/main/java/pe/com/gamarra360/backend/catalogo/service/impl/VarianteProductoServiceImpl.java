@@ -63,6 +63,15 @@ public class VarianteProductoServiceImpl extends AbstractCrudService<VariantePro
 
     @Override
     @Transactional
+    public void actualizarImagen(Integer idVariante, String imagenUrl) {
+        VarianteProducto variante = varianteProductoRepository.findById(idVariante)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Variante no encontrada con id " + idVariante));
+        variante.setImagenUrl(imagenUrl);
+        varianteProductoRepository.save(variante);
+    }
+
+    @Override
+    @Transactional
     public void descontarStock(Integer idVariante, Integer cantidad) {
         VarianteProducto variante = varianteProductoRepository
                 .findByIdWithLock(idVariante)  // bloqueo pesimista

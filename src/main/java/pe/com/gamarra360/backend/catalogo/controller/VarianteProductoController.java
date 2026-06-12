@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 import pe.com.gamarra360.backend.catalogo.dto.StockResponse;
 import pe.com.gamarra360.backend.catalogo.dto.StockUpdateRequest;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
+
+import java.util.Map;
 import pe.com.gamarra360.backend.catalogo.service.VarianteProductoService;
 
 import java.util.List;
@@ -58,6 +60,16 @@ public class VarianteProductoController {
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
         log.info("DELETE /api/v1/variantes-producto/{}", id);
         service.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/imagen")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<Void> actualizarImagen(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> body) {
+        log.info("PATCH /api/v1/variantes-producto/{}/imagen", id);
+        service.actualizarImagen(id, body.get("imagenUrl"));
         return ResponseEntity.noContent().build();
     }
 

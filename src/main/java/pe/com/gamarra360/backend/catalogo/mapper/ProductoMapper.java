@@ -153,12 +153,12 @@ public class ProductoMapper {
                 .build();
     }
 
-    private List<EspecificacionProductoDto> toEspecificacionDtoList(List<EspecificacionProducto> specs) {
+    private List<EspecificacionProductoDto> toEspecificacionDtoList(List<Especificacion> specs) {
         if (specs == null) return Collections.emptyList();
         return specs.stream().map(this::toEspecificacionDto).toList();
     }
 
-    private EspecificacionProductoDto toEspecificacionDto(EspecificacionProducto e) {
+    private EspecificacionProductoDto toEspecificacionDto(Especificacion e) {
         return EspecificacionProductoDto.builder()
                 .idEspecificacion(e.getIdEspecificacion())
                 .nombre(e.getNombre())

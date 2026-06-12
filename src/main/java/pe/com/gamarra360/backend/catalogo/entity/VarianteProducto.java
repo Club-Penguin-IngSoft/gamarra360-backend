@@ -60,4 +60,7 @@ public class VarianteProducto {
 
     @Column(name = "disponible")
     private Boolean disponible;
+
+    @Column(name = "imagen_url")
+    private String imagenUrl;
 }

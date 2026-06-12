@@ -27,4 +27,5 @@ public class VarianteProductoDto {
     private Integer minimoStock;
     private Double precioAjustado;
     private Boolean disponible;
+    private String imagenUrl;
 }

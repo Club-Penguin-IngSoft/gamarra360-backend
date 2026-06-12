@@ -8,6 +8,10 @@ import java.util.List;
 
 public interface EspecificacionRepository extends JpaRepository<Especificacion, Integer> {
 
+    List<Especificacion> findByIdProducto(Integer idProducto);
+
+    void deleteByIdProducto(Integer idProducto);
+
     /** Devuelve los valores de Material distintos y no nulos presentes en productos activos, ordenados. */
     @Query("SELECT DISTINCT e.descripcion FROM Especificacion e " +
            "WHERE UPPER(e.nombre) = 'MATERIAL' AND e.descripcion IS NOT NULL " +
