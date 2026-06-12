@@ -55,4 +55,13 @@ public interface ProductoService extends CrudService<Producto, Integer> {
      * La clave del mapa es el nombre de la categoría (ej. "Hombre", "Mujer").
      */
     java.util.Map<String, List<ProductoResponse>> listarDestacados(int porCategoria);
+
+    /**
+     * Búsqueda de productos por keyword en nombre, descripción y nombre de tienda.
+     * Solo devuelve productos de catálogo público (tienda y comerciante verificados).
+     *
+     * @param q    término de búsqueda (mínimo 2 caracteres)
+     * @param size máximo de resultados a devolver
+     */
+    List<ProductoResponse> buscarPorKeyword(String q, int size);
 }

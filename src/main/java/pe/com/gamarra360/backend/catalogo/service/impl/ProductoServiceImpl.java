@@ -281,6 +281,15 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         productoRepository.save(producto);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductoResponse> buscarPorKeyword(String q, int size) {
+        return productoRepository.buscarPorKeyword(q).stream()
+                .limit(size)
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private Double calcularPrecioFinal(Double precioBase, List<DescuentoVolumen> descuentos) {
