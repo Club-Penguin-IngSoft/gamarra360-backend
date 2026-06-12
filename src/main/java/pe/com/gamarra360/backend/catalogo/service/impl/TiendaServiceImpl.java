@@ -107,6 +107,7 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PerfilTiendaPublicaDto obtenerPerfilPublico(Integer idTienda) {
         log.info("Obteniendo perfil público de tienda con ID: {}", idTienda);
 
