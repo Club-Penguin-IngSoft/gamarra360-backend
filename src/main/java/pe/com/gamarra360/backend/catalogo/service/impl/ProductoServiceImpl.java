@@ -28,7 +28,6 @@ import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.Objects;
 
 @Service
 @Slf4j
@@ -126,7 +125,14 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
                 .sorted()
                 .collect(Collectors.toList());
 
-        return new OpcionesFiltroDto(colores, materiales, tallas, tiposProducto);
+        List<String> categorias = categoriaRepository.findAll().stream()
+                .map(c -> c.getNombreCategoria())
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        return new OpcionesFiltroDto(colores, materiales, tallas, tiposProducto, categorias);
     }
 
     @Override
