@@ -2,6 +2,8 @@ package pe.com.gamarra360.backend.pedido.controller;
 
 import lombok.extern.slf4j.Slf4j;
 
+import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteDetalle;
+import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteResumen;
 import pe.com.gamarra360.backend.pedido.entity.Pedido;
 import pe.com.gamarra360.backend.pedido.service.PedidoService;
 import pe.com.gamarra360.backend.security.UsuarioPrincipal;
@@ -62,5 +64,21 @@ public class PedidoController {
         log.info("PATCH /api/v1/pedidos/{}/cancelar — clienteId={}", id, clienteId);
         service.cancelar(id, clienteId);
         return ResponseEntity.ok(service.obtener(id));
+    }
+
+    @GetMapping("/comerciante")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<List<PedidoComercianteResumen>> pedidosComerciante(Authentication auth) {
+        Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("GET /api/v1/pedidos/comerciante — vendedorId={}", vendedorId);
+        return ResponseEntity.ok(service.listarPorVendedor(vendedorId));
+    }
+
+    @GetMapping("/{id}/comerciante-detalle")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<PedidoComercianteDetalle> pedidoComercianteDetalle(@PathVariable Long id, Authentication auth) {
+        Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("GET /api/v1/pedidos/{}/comerciante-detalle — vendedorId={}", id, vendedorId);
+        return ResponseEntity.ok(service.obtenerDetalleComerciante(id, vendedorId));
     }
 }

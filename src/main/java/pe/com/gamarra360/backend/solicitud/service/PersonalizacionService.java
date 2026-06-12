@@ -1,9 +1,12 @@
 package pe.com.gamarra360.backend.solicitud.service;
 
 import pe.com.gamarra360.backend.service.CrudService;
+import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionComercianteDetalle;
+import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionComercianteResumen;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionDetalleResponse;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionResumen;
+import pe.com.gamarra360.backend.solicitud.dto.RespuestaPersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
 
 import java.util.List;
@@ -27,4 +30,13 @@ public interface PersonalizacionService extends CrudService<Personalizacion, Lon
 
     /** Rechaza la propuesta del vendedor: pasa a RECHAZADA. */
     void rechazar(Long id, Integer clienteId);
+
+    /** Lista las personalizaciones recibidas por el comerciante autenticado, más recientes primero. */
+    List<PersonalizacionComercianteResumen> listarPorVendedor(Integer vendedorId);
+
+    /** Detalle completo de una personalización para el comerciante, validando que le pertenezca. */
+    PersonalizacionComercianteDetalle obtenerDetalleComerciante(Long id, Integer vendedorId);
+
+    /** El comerciante acepta (cotiza) o rechaza una solicitud en estado PENDIENTE. */
+    PersonalizacionComercianteDetalle responder(Long id, RespuestaPersonalizacionRequest request, Integer vendedorId);
 }
