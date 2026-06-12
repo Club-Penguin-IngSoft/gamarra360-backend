@@ -4,5 +4,6 @@ public record ActualizarPerfilRequest(
         String nombres,
         String primerApellido,
         String segundoApellido,
-        String telefono
+        String telefono,
+        String direccionEntrega
 ) {}

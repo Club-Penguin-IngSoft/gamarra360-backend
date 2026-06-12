@@ -37,20 +37,30 @@ public class UsuarioServiceImpl extends AbstractCrudService<Usuario, Integer> im
     @Override
     @Transactional
     public void actualizarPerfil(Integer id, ActualizarPerfilRequest request) {
-        //tabla usuarios
-        usuarioRepository.actualizarPerfil(
-                id,
-                request.nombres(),
-                request.primerApellido(),
-                request.segundoApellido(),
-                request.telefono()
-        );
 
-        //tabla clientes (nombre = nombres, apellido = primerApellido)
-        clienteRepository.actualizarPerfil(
-                id,
-                request.nombres(),
-                request.primerApellido()
-        );
+        // Actualiza tabla usuarios
+        if (request.nombres() != null || request.telefono() != null) {
+            usuarioRepository.actualizarPerfil(
+                    id,
+                    request.nombres(),
+                    request.primerApellido(),
+                    request.segundoApellido(),
+                    request.telefono()
+            );
+        }
+
+        // Actualiza tabla clientes — nombre, apellido Y dirección
+        clienteRepository.findById(id).ifPresent(cliente -> {
+            if (request.nombres() != null) {
+                cliente.setNombre(request.nombres());
+            }
+            if (request.primerApellido() != null) {
+                cliente.setApellido(request.primerApellido());
+            }
+            if (request.direccionEntrega() != null) {
+                cliente.setDireccionEntrega(request.direccionEntrega());
+            }
+            clienteRepository.save(cliente);
+        });
     }
 }

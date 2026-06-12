@@ -14,7 +14,7 @@ public class AuthResponse {
     private String rol;
     private boolean needsRegistration;
     private String estadoSolicitud; //nuevo: PENDIENTE | RECHAZADO | null
-
+    private String direccionEntrega;
     public AuthResponse() {
     }
 
