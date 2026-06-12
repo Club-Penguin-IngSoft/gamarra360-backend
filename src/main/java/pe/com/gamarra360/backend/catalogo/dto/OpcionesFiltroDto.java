@@ -26,4 +26,6 @@ public class OpcionesFiltroDto {
     private List<String> tallas;
     /** Nombres de tipos de producto (ej. "Blusas", "Casacas", "Polos") */
     private List<String> tiposProducto;
+    /** Nombres de categorías (ej. "Niños", "Adultos", "Damas") */
+    private List<String> categorias;
 }

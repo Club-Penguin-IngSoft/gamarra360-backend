@@ -66,6 +66,21 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
                             .sorted()
                             .collect(Collectors.toList());
 
+                    // Construir tiposServicio: cada producto puede ofrecer múltiples servicios
+                    java.util.Set<String> servicios = new java.util.HashSet<>();
+                    for (var producto : t.getProductos()) {
+                        if (Boolean.TRUE.equals(producto.getActivo())) {
+                            // Si tiene precio base > 0, puede comprarse directamente
+                            if (producto.getPrecioBase() != null && producto.getPrecioBase() > 0) {
+                                servicios.add("COMPRA_DIRECTA");
+                            }
+                            // Si es personalizable o no tiene precio, ofrece personalización
+                            if (Boolean.TRUE.equals(producto.getEsPersonalizable()) || producto.getPrecioBase() == null) {
+                                servicios.add("PERSONALIZABLE");
+                            }
+                        }
+                    }
+
                     return new TiendaResumenDto(
                             t.getIdTienda(),
                             t.getNombreComercial(),
@@ -73,7 +88,7 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
                             t.getFoto(),
                             t.getVerificada(),
                             categorias,
-                            null,           // tiposServicio: sin dato en BD; frontend usa ['COMPRA_DIRECTA']
+                            new java.util.ArrayList<>(servicios),
                             tiposProducto
                     );
                 })
@@ -106,6 +121,7 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
         dto.setNombreComercial(tienda.getNombreComercial());
         dto.setInformacion(tienda.getInformacion());
         dto.setFoto(tienda.getFoto());
+        dto.setVerificada(tienda.getVerificada());
 
         java.util.List<PerfilTiendaPublicaDto.ProductoResumenDto> productosActivos = tienda.getProductos()
             .stream()
@@ -121,10 +137,48 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
             ))
             .collect(java.util.stream.Collectors.toList());
 
-        dto.setProductos(productosActivos);
+        // Construir categorías únicas de productos activos
+        java.util.List<String> categorias = tienda.getProductos()
+            .stream()
+            .filter(p -> Boolean.TRUE.equals(p.getActivo()))
+            .map(p -> p.getCategoria() != null ? p.getCategoria().getNombreCategoria() : null)
+            .filter(Objects::nonNull)
+            .distinct()
+            .sorted()
+            .collect(Collectors.toList());
 
-        log.info("Perfil público de tienda {} obtenido con {} productos activos",
-                 idTienda, productosActivos.size());
+        // Construir tiposServicio: cada producto puede ofrecer múltiples servicios
+        java.util.Set<String> servicios = new java.util.HashSet<>();
+        for (var producto : tienda.getProductos()) {
+            if (Boolean.TRUE.equals(producto.getActivo())) {
+                // Si tiene precio base > 0, puede comprarse directamente
+                if (producto.getPrecioBase() != null && producto.getPrecioBase() > 0) {
+                    servicios.add("COMPRA_DIRECTA");
+                }
+                // Si es personalizable o no tiene precio, ofrece personalización
+                if (Boolean.TRUE.equals(producto.getEsPersonalizable()) || producto.getPrecioBase() == null) {
+                    servicios.add("PERSONALIZABLE");
+                }
+            }
+        }
+
+        // Construir tiposProducto
+        java.util.List<String> tiposProducto = tienda.getProductos()
+            .stream()
+            .filter(p -> Boolean.TRUE.equals(p.getActivo()))
+            .map(p -> p.getTipoProducto() != null ? p.getTipoProducto().getNombre() : null)
+            .filter(Objects::nonNull)
+            .distinct()
+            .sorted()
+            .collect(Collectors.toList());
+
+        dto.setProductos(productosActivos);
+        dto.setCategorias(categorias);
+        dto.setTiposServicio(new java.util.ArrayList<>(servicios));
+        dto.setTiposProducto(tiposProducto);
+
+        log.info("Perfil público de tienda {} obtenido con {} productos activos y servicios: {}",
+                 idTienda, productosActivos.size(), servicios);
         return dto;
     }
 }
