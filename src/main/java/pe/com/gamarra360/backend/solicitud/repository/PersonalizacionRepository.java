@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface PersonalizacionRepository extends JpaRepository<Personalizacion, Long> {
     List<Personalizacion> findByClienteIdOrderByFechaCreacionDesc(Integer clienteId);
+
+    List<Personalizacion> findByVendedorIdOrderByFechaCreacionDesc(Integer vendedorId);
 }

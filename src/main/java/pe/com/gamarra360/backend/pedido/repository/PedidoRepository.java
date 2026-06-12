@@ -7,4 +7,8 @@ import java.util.List;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Pedido> findByOrdenPagoId(Long ordenPagoId);
+
+    List<Pedido> findByVendedorIdOrderByFechaDesc(Integer vendedorId);
+
+    List<Pedido> findByClienteIdAndVendedorIdOrderByFechaDesc(Integer clienteId, Integer vendedorId);
 }
