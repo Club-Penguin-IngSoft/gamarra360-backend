@@ -2,6 +2,7 @@ package pe.com.gamarra360.backend.storage.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import pe.com.gamarra360.backend.storage.service.S3Service;
@@ -15,6 +16,12 @@ import java.util.UUID;
 
 @Service
 @Slf4j
+@ConditionalOnProperty(
+    prefix = "storage",
+    name = "provider",
+    havingValue = "S3",
+    matchIfMissing = true
+)
 public class S3ServiceImpl implements S3Service {
 
     private final S3Client s3Client;
