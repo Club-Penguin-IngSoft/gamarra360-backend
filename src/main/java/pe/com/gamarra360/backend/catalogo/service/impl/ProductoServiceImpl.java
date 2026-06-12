@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.PageRequest;
+import pe.com.gamarra360.backend.catalogo.dto.EspecificacionProductoDto;
 import pe.com.gamarra360.backend.catalogo.dto.ImagenRequest;
 import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
@@ -198,8 +199,9 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
         Producto saved = productoRepository.save(producto);
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), saved);
+        List<Especificacion> savedEspecs = guardarEspecificaciones(request.getEspecificaciones(), saved);
 
-        return buildResponse(saved, tienda.getNombreComercial(), savedImages, List.of());
+        return buildResponse(saved, tienda.getNombreComercial(), savedImages, savedEspecs, List.of());
     }
 
     @Override
@@ -235,13 +237,16 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         imagenProductoRepository.deleteAll(imagenProductoRepository.findByIdProducto(idProducto));
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), producto);
 
+        especificacionRepository.deleteByIdProducto(idProducto);
+        List<Especificacion> savedEspecs = guardarEspecificaciones(request.getEspecificaciones(), producto);
+
         Tienda tienda = producto.getTienda();
         List<VarianteProducto> variantes = varianteProductoRepository.findByIdProducto(idProducto);
 
         productoRepository.save(producto);
 
         return buildResponse(producto, tienda != null ? tienda.getNombreComercial() : null,
-                savedImages, variantes);
+                savedImages, savedEspecs, variantes);
     }
 
     @Override
@@ -276,6 +281,15 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         productoRepository.save(producto);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductoResponse> buscarPorKeyword(String q, int size) {
+        return productoRepository.buscarPorKeyword(q).stream()
+                .limit(size)
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private Double calcularPrecioFinal(Double precioBase, List<DescuentoVolumen> descuentos) {
@@ -302,13 +316,28 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
 
     private ProductoResponse toResponse(Producto p) {
         List<ImagenProducto> imgs = imagenProductoRepository.findByIdProducto(p.getIdProducto());
+        List<Especificacion> especs = especificacionRepository.findByIdProducto(p.getIdProducto());
         List<VarianteProducto> vars = varianteProductoRepository.findByIdProducto(p.getIdProducto());
         Tienda tienda = p.getTienda();
-        return buildResponse(p, tienda != null ? tienda.getNombreComercial() : null, imgs, vars);
+        return buildResponse(p, tienda != null ? tienda.getNombreComercial() : null, imgs, especs, vars);
+    }
+
+    private List<Especificacion> guardarEspecificaciones(List<EspecificacionProductoDto> dtos, Producto producto) {
+        if (dtos == null || dtos.isEmpty()) return List.of();
+        List<Especificacion> result = new ArrayList<>();
+        for (EspecificacionProductoDto dto : dtos) {
+            Especificacion esp = new Especificacion();
+            esp.setNombre(dto.getNombre());
+            esp.setDescripcion(dto.getDescripcion());
+            esp.setIdProducto(producto.getIdProducto());
+            result.add(especificacionRepository.save(esp));
+        }
+        return result;
     }
 
     private ProductoResponse buildResponse(Producto p, String nombreTienda,
                                             List<ImagenProducto> imgs,
+                                            List<Especificacion> especs,
                                             List<VarianteProducto> vars) {
         ProductoResponse r = new ProductoResponse();
         r.setIdProducto(p.getIdProducto());
@@ -339,6 +368,14 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             return d;
         }).collect(Collectors.toList()));
 
+        r.setEspecificaciones(especs.stream().map(e -> {
+            ProductoResponse.EspecificacionDto d = new ProductoResponse.EspecificacionDto();
+            d.setIdEspecificacion(e.getIdEspecificacion());
+            d.setNombre(e.getNombre());
+            d.setDescripcion(e.getDescripcion());
+            return d;
+        }).collect(Collectors.toList()));
+
         r.setVariantes(vars.stream().map(v -> {
             ProductoResponse.VarianteDto d = new ProductoResponse.VarianteDto();
             d.setIdVariante(v.getIdVariante());
@@ -351,6 +388,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setTalla(v.getTalla() != null ? v.getTalla().getTalla() : null);
             d.setColor(v.getColor() != null ? v.getColor().getNombre() : null);
             d.setColorHex(v.getColor() != null ? v.getColor().getCodHex() : null);
+            d.setImagenUrl(v.getImagenUrl());
             return d;
         }).collect(Collectors.toList()));
 

@@ -166,6 +166,7 @@ public class AuthService {
         usuario.setVerificado(false);//los que faltan revisar
         usuario.setTipoDocumento(request.getTipoDocumento());
         usuario.setNombreTienda(request.getNombreTienda());
+        usuario.setLogoUrl(request.getLogoUrl());
         usuario.setNombreComerciante(request.getNombres());
         usuario.setApellidoComerciante(request.getPrimerApellido());
         usuario.setAprobado(false);//aprueba o rechaza

@@ -76,6 +76,22 @@ public class ProductoController {
     }
 
     /**
+     * Búsqueda de productos por keyword en nombre, descripción y nombre de tienda.
+     * Solo devuelve productos de catálogo público (tienda y comerciante verificados).
+     * Usado por el buscador del TopBar.
+     *
+     * @param q    término de búsqueda
+     * @param size máximo de resultados (default 6)
+     */
+    @GetMapping("/buscar")
+    public ResponseEntity<List<ProductoResponse>> buscar(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "6") int size) {
+        log.info("GET /api/v1/productos/buscar?q={}&size={}", q, size);
+        return ResponseEntity.ok(service.buscarPorKeyword(q, size));
+    }
+
+    /**
      * Devuelve las opciones disponibles para los filtros del catálogo
      * (colores, materiales, tallas, tipos de producto) desde la BD real.
      * Endpoint público — no requiere autenticación.

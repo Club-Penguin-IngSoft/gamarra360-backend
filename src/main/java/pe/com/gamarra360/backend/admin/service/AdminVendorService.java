@@ -172,7 +172,7 @@ public class AdminVendorService {
         tienda.setIdComerciante(comerciante.getUsuarioId());
         tienda.setNombreComercial(comerciante.getNombreTienda()); // nombre_tienda de comerciantes
         tienda.setInformacion(null);
-        tienda.setFoto(null);
+        tienda.setFoto(comerciante.getLogoUrl());
         tienda.setVerificada(true);
         //tienda.setGaleria(null);//Falta implementar
         //tienda.setPiso(null);

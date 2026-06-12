@@ -67,7 +67,7 @@ public class Producto {
     private List<ImagenProducto> imagenes = new ArrayList<>();
 
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private List<EspecificacionProducto> especificaciones = new ArrayList<>();
+    private List<Especificacion> especificaciones = new ArrayList<>();
 
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<DescuentoVolumen> descuentosVolumen = new ArrayList<>();

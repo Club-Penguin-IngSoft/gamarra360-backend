@@ -42,6 +42,9 @@ public class Comerciante extends Usuario {
     private Boolean aprobado;
     @Column(name= "stripe_account_id")
     private String stripeAccountId;
+
+    @Column(name = "logo_url")
+    private String logoUrl;
     @OneToOne(mappedBy = "comerciante", fetch = FetchType.LAZY)
     @JsonIgnore
     private Tienda tienda;

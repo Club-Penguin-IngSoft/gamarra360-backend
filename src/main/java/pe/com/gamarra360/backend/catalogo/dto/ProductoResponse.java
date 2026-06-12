@@ -24,7 +24,16 @@ public class ProductoResponse {
     private Integer idTipoProducto;
     private String nombreTipoProducto;
     private List<ImagenDto> imagenes;
+    private List<EspecificacionDto> especificaciones;
     private List<VarianteDto> variantes;
+
+    @Getter
+    @Setter
+    public static class EspecificacionDto {
+        private Integer idEspecificacion;
+        private String nombre;
+        private String descripcion;
+    }
 
     @Getter
     @Setter
@@ -48,5 +57,6 @@ public class ProductoResponse {
         private String talla;
         private String color;
         private String colorHex;
+        private String imagenUrl;
     }
 }
