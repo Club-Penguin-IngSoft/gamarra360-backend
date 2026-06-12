@@ -1,11 +1,12 @@
-# Orquesta backend + frontend.
+# Orquesta backend + frontend + Caddy (reverse proxy con HTTPS).
 # Requiere que ambos repos estén clonados como hermanos:
 #   ~/gamarra360-backend   (aquí vive este archivo)
 #   ~/gamarra360-frontend
 #
 # Antes de levantar, crear en el servidor:
 #   - gamarra360-backend/src/main/resources/application.properties
-#   - gamarra360-frontend/.env   (VITE_API_BASE_URL, VITE_GOOGLE_CLIENT_ID, VITE_STRIPE_PUBLISHABLE_KEY)
+#   - gamarra360-backend/.env           -> SITE_ADDRESS=tudominio.duckdns.org
+#   - gamarra360-frontend/.env          -> VITE_API_BASE_URL=https://tudominio.duckdns.org/api/v1 (+ VITE_GOOGLE/STRIPE)
 #
 # Levantar:  docker compose up -d --build
 services:
@@ -14,8 +15,8 @@ services:
       context: .
     image: gamarra360-backend
     container_name: gamarra360-backend
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     restart: unless-stopped
 
   frontend:
@@ -23,8 +24,29 @@ services:
       context: ../gamarra360-frontend
     image: gamarra360-frontend
     container_name: gamarra360-frontend
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - backend
     restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: gamarra360-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
