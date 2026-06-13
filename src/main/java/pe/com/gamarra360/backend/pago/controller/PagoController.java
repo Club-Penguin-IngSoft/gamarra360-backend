@@ -29,7 +29,8 @@ public class PagoController {
 
     @Value("${stripe.webhook-secret}")
     private String webhookSecret;
-
+    @Value("${stripe.webhook-secret-connect}")
+    private String webhookSecretConnect;
     // Constructor con ambas dependencias inyectadas
     public PagoController(PagoService service, StripePaymentService stripePaymentService) {
         this.service               = service;
