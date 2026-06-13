@@ -1,0 +1,18 @@
+# Reverse proxy con HTTPS automático (Let's Encrypt).
+# El dominio se inyecta vía variable SITE_ADDRESS (definida en el .env del
+# directorio del docker-compose). Debe ser un dominio real (no IP), p.ej.
+# gamarra360.duckdns.org, con DNS apuntando a la IP pública del EC2 y los
+# puertos 80 y 443 abiertos en el Security Group.
+{$SITE_ADDRESS} {
+    encode gzip
+
+    # Las llamadas al API van al backend Spring Boot
+    handle /api/* {
+        reverse_proxy backend:8080
+    }
+
+    # Todo lo demás lo sirve el frontend (Nginx con la SPA)
+    handle {
+        reverse_proxy frontend:80
+    }
+}
