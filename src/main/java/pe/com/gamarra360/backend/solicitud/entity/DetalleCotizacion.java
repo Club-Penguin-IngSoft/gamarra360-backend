@@ -23,6 +23,8 @@ public class DetalleCotizacion {
     private Double precioBase;
     @Column(name = "id_cotizacion")
     private Long idCotizacion;
+    @Column(columnDefinition = "TEXT")
+    private String especificacion;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cotizacion", insertable = false, updatable = false)
     @JsonIgnore

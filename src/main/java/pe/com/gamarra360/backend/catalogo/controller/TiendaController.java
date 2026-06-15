@@ -1,9 +1,14 @@
 package pe.com.gamarra360.backend.catalogo.controller;
 
 import lombok.extern.slf4j.Slf4j;
-
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import pe.com.gamarra360.backend.catalogo.dto.PerfilTiendaPublicaDto;
+import pe.com.gamarra360.backend.catalogo.dto.TiendaInfoResponse;
+import pe.com.gamarra360.backend.catalogo.dto.TiendaResumenDto;
 import pe.com.gamarra360.backend.catalogo.entity.Tienda;
 import pe.com.gamarra360.backend.catalogo.service.TiendaService;
+import pe.com.gamarra360.backend.security.UsuarioPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,10 +31,30 @@ public class TiendaController {
         return ResponseEntity.ok(service.listar());
     }
 
+    @GetMapping("/publico")
+    public ResponseEntity<List<TiendaResumenDto>> listarPublico() {
+        log.info("GET /api/v1/tiendas/publico");
+        return ResponseEntity.ok(service.listarPublico());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Tienda> obtener(@PathVariable Integer id) {
         log.info("GET /api/v1/tiendas/{}", id);
         return ResponseEntity.ok(service.obtener(id));
+    }
+
+    @GetMapping("/publico/{id}")
+    public ResponseEntity<PerfilTiendaPublicaDto> obtenerPerfilPublico(@PathVariable Integer id) {
+        log.info("GET /api/v1/tiendas/publico/{}", id);
+        return ResponseEntity.ok(service.obtenerPerfilPublico(id));
+    }
+
+    @GetMapping("/mi-tienda")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<TiendaInfoResponse> obtenerMiTienda(Authentication auth) {
+        Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("GET /api/v1/tiendas/mi-tienda - comerciante {}", comercianteId);
+        return ResponseEntity.ok(service.obtenerInfoComerciante(comercianteId));
     }
 
     @PostMapping
@@ -50,4 +75,5 @@ public class TiendaController {
         service.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+
 }

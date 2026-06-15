@@ -16,6 +16,9 @@ public class Cliente extends Usuario {
     private String nombre;
     private String apellido;
 
+    @Column(name= "direccion_entrega")
+    private String direccionEntrega;
+
     @OneToOne(mappedBy = "cliente", fetch = FetchType.LAZY)
     @JsonIgnore
     private Carrito carrito;
