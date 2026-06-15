@@ -26,7 +26,8 @@ public class CorsConfig implements WebMvcConfigurer {
             "http://localhost:5173",
             "http://localhost:5174",
             "http://localhost:3000",
-            "https://gamarra360.amplifyapp.com"
+            "https://gamarra360.amplifyapp.com",
+            "https://gamarra360.duckdns.org"
     );
 
     private static final List<String> ALLOWED_METHODS =

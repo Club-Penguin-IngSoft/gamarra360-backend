@@ -6,6 +6,7 @@ import com.stripe.model.AccountLink;
 import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +27,8 @@ import java.util.Map;
 public class ComercianteStripeServiceImpl implements ComercianteStripeService {
 
     private final ComercianteRepository comercianteRepository;
-
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
     @Override
     public Map<String, Object> obtenerBalance(Integer comercianteId) throws StripeException {
         Comerciante comerciante = comercianteRepository.findById(comercianteId)
@@ -131,9 +133,8 @@ public class ComercianteStripeServiceImpl implements ComercianteStripeService {
             throws StripeException {
         AccountLinkCreateParams params = AccountLinkCreateParams.builder()
                 .setAccount(stripeAccountId)
-                .setRefreshUrl("http://localhost:5173/comerciante/stripe/refresh/"
-                        + comercianteId)
-                .setReturnUrl("http://localhost:5173/comerciante/stripe/completado")
+                .setRefreshUrl(frontendUrl + "/comerciante/stripe/refresh/" + comercianteId)
+                .setReturnUrl(frontendUrl + "/comerciante/stripe/completado")
                 .setType(AccountLinkCreateParams.Type.ACCOUNT_ONBOARDING)
                 .build();
 
