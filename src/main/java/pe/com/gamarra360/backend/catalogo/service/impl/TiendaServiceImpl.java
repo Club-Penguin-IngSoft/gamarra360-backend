@@ -87,6 +87,8 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
                             t.getInformacion(),
                             t.getFoto(),
                             t.getVerificada(),
+                            t.getGaleria(),
+                            t.getOfreceEnvioDomicilio(),
                             categorias,
                             new java.util.ArrayList<>(servicios),
                             tiposProducto
@@ -173,6 +175,8 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
             .sorted()
             .collect(Collectors.toList());
 
+        dto.setGaleria(tienda.getGaleria());
+        dto.setOfreceEnvioDomicilio(tienda.getOfreceEnvioDomicilio());
         dto.setProductos(productosActivos);
         dto.setCategorias(categorias);
         dto.setTiposServicio(new java.util.ArrayList<>(servicios));

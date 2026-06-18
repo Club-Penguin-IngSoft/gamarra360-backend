@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import pe.com.gamarra360.backend.enums.GaleriaEnum;
 
 @Getter
 @Setter
@@ -16,8 +17,10 @@ public class TiendaResumenDto {
     private String nombreComercial;
     private String informacion;
     private String foto;
-    private Boolean verificada; // Para confirmar que están verificadas
-    private List<String> categorias;      // NUEVO
-    private List<String> tiposServicio;   // NUEVO
-    private List<String> tiposProducto;   // NUEVO — tipos de producto que vende la tienda
+    private Boolean verificada;
+    private GaleriaEnum galeria;
+    private Boolean ofreceEnvioDomicilio;
+    private List<String> categorias;
+    private List<String> tiposServicio;
+    private List<String> tiposProducto;
 }

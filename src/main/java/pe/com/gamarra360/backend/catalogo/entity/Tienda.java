@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import pe.com.gamarra360.backend.enums.GaleriaEnum;
 import pe.com.gamarra360.backend.usuario.entity.Comerciante;
 import jakarta.persistence.*;
 import java.util.ArrayList;
@@ -27,7 +28,13 @@ public class Tienda {
     private String informacion;
     private String foto;
     private Boolean verificada;
-    //private Boolean activa;//no se usa
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "galeria")
+    private GaleriaEnum galeria;
+
+    @Column(name = "ofrece_envio_domicilio")
+    private Boolean ofreceEnvioDomicilio;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_comerciante", insertable = false, updatable = false)

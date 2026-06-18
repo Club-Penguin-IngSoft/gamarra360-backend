@@ -33,6 +33,8 @@ public class ProductoRequest {
     @NotNull(message = "El tipo de producto es obligatorio")
     private Integer idTipoProducto;
 
+    private Integer idMaterialFiltro;
+
     @NotEmpty(message = "Debe incluir al menos una imagen")
     @Valid
     private List<ImagenRequest> imagenes;
