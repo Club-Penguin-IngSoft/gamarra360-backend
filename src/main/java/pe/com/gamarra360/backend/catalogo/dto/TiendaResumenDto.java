@@ -20,6 +20,8 @@ public class TiendaResumenDto {
     private Boolean verificada;
     private GaleriaEnum galeria;
     private Boolean ofreceEnvioDomicilio;
+    private String piso;
+    private String stand;
     private List<String> categorias;
     private List<String> tiposServicio;
     private List<String> tiposProducto;

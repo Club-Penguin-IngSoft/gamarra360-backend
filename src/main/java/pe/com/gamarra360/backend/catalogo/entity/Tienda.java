@@ -36,6 +36,12 @@ public class Tienda {
     @Column(name = "ofrece_envio_domicilio")
     private Boolean ofreceEnvioDomicilio;
 
+    @Column(name = "piso")
+    private String piso;
+
+    @Column(name = "stand")
+    private String stand;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_comerciante", insertable = false, updatable = false)
     @JsonIgnore
