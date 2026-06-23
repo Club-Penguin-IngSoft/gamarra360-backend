@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.com.gamarra360.backend.pago.dto.CrearPagoStripeRequest;
 import pe.com.gamarra360.backend.pago.dto.CrearPagoStripeResponse;
+import pe.com.gamarra360.backend.pago.dto.PrepararCarritoRequest;
+import pe.com.gamarra360.backend.pago.dto.PrepararCarritoResponse;
 import pe.com.gamarra360.backend.pago.entity.Pago;
 import pe.com.gamarra360.backend.pago.service.PagoService;
 import pe.com.gamarra360.backend.pago.service.impl.StripePaymentService;
@@ -29,9 +31,9 @@ public class PagoController {
 
     @Value("${stripe.webhook-secret}")
     private String webhookSecret;
-    @Value("${stripe.webhook-secret-connect}")
+    @Value("${stripe.webhook-secret-connect:}")
     private String webhookSecretConnect;
-    // Constructor con ambas dependencias inyectadas
+
     public PagoController(PagoService service, StripePaymentService stripePaymentService) {
         this.service               = service;
         this.stripePaymentService  = stripePaymentService;
@@ -68,10 +70,23 @@ public class PagoController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/preparar")
+    public ResponseEntity<PrepararCarritoResponse> prepararCarrito(
+            @RequestBody PrepararCarritoRequest request) {
+        log.info("POST /api/v1/pagos/preparar - clienteId: {}", request.getClienteId());
+        try {
+            Long carritoPendienteId = stripePaymentService.prepararCarrito(request);
+            return ResponseEntity.ok(new PrepararCarritoResponse(carritoPendienteId));
+        } catch (Exception e) {
+            log.error("Error preparando carrito: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @PostMapping("/crear-intent")
     public ResponseEntity<CrearPagoStripeResponse> crearIntent(
             @RequestBody CrearPagoStripeRequest request) {
-        log.info("POST /api/v1/pagos/crear-intent - ordenPagoId: {}", request.ordenPagoId());
+        log.info("POST /api/v1/pagos/crear-intent - carritoPendienteId: {}", request.carritoPendienteId());
         try {
             return ResponseEntity.ok(stripePaymentService.crearPaymentIntent(request));
         } catch (StripeException e) {
@@ -90,21 +105,21 @@ public class PagoController {
         log.info("POST /api/v1/pagos/webhook — tipo evento pendiente de parsear");
         try {
             Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
-            log.info("Evento Stripe recibido: {}", event.getType()); // ← ¿llega aquí?
+            log.info("Evento Stripe recibido: {}", event.getType());
 
             if ("payment_intent.succeeded".equals(event.getType())) {
-                log.info("Procesando payment_intent.succeeded"); // ← ¿llega aquí?
+                log.info("Procesando payment_intent.succeeded");
 
                 EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
                 PaymentIntent intent;
                 if (deserializer.getObject().isPresent()) {
                     intent = (PaymentIntent) deserializer.getObject().get();
                 } else {
-                    log.warn("Deserializer vacío, usando deserializeUnsafe"); // ← ¿cae aquí?
+                    log.warn("Deserializer vacío, usando deserializeUnsafe");
                     intent = (PaymentIntent) deserializer.deserializeUnsafe();
                 }
 
-                log.info("Intent id={} metadata={}", intent.getId(), intent.getMetadata()); // ← ¿metadata tiene orden_pago_id?
+                log.info("Intent id={} metadata={}", intent.getId(), intent.getMetadata());
                 stripePaymentService.procesarPagoConfirmado(intent);
             }
 
@@ -113,7 +128,7 @@ public class PagoController {
             log.warn("Firma webhook inválida: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Firma inválida");
         } catch (Exception e) {
-            log.error("Error procesando webhook: {}", e.getMessage(), e); // ← el ", e" al final imprime el stacktrace completo
+            log.error("Error procesando webhook: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
