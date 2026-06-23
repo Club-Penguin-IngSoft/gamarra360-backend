@@ -6,8 +6,12 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.*;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import pe.com.gamarra360.backend.catalogo.dto.EspecificacionProductoDto;
+import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
 import pe.com.gamarra360.backend.catalogo.dto.ImagenRequest;
 import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
@@ -47,6 +51,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     private final ColorRepository colorRepository;
     private final TallaRepository tallaRepository;
     private final EspecificacionRepository especificacionRepository;
+    private final MaterialFiltroRepository materialFiltroRepository;
 
     public ProductoServiceImpl(
             ProductoRepository productoRepository,
@@ -60,7 +65,8 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             CotizacionCatalogoRepository cotizacionCatalogoRepository,
             ColorRepository colorRepository,
             TallaRepository tallaRepository,
-            EspecificacionRepository especificacionRepository) {
+            EspecificacionRepository especificacionRepository,
+            MaterialFiltroRepository materialFiltroRepository) {
         super(productoRepository, "Producto");
         this.productoRepository = productoRepository;
         this.comercianteRepository = comercianteRepository;
@@ -74,6 +80,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         this.colorRepository = colorRepository;
         this.tallaRepository = tallaRepository;
         this.especificacionRepository = especificacionRepository;
+        this.materialFiltroRepository = materialFiltroRepository;
     }
 
     @Override
@@ -120,7 +127,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         List<String> materiales = especificacionRepository.findDistinctMateriales();
 
         List<String> tiposProducto = tipoProductoRepository.findAll().stream()
-                .map(tp -> tp.getNombre())
+                .map(TipoProducto::getNombre)
                 .filter(Objects::nonNull)
                 .distinct()
                 .sorted()
@@ -202,6 +209,10 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         producto.setActivo(true);
         producto.setCategoria(categoria);
         producto.setTipoProducto(tipoProducto);
+        if (request.getIdMaterialFiltro() != null) {
+            producto.setMaterialFiltro(materialFiltroRepository.findById(request.getIdMaterialFiltro())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Material no encontrado con id " + request.getIdMaterialFiltro())));
+        }
 
         Producto saved = productoRepository.save(producto);
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), saved);
@@ -239,6 +250,12 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
         producto.setCategoria(categoria);
         producto.setTipoProducto(tipoProducto);
+        if (request.getIdMaterialFiltro() != null) {
+            producto.setMaterialFiltro(materialFiltroRepository.findById(request.getIdMaterialFiltro())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Material no encontrado con id " + request.getIdMaterialFiltro())));
+        } else {
+            producto.setMaterialFiltro(null);
+        }
 
         imagenProductoRepository.deleteAll(imagenProductoRepository.findByIdProducto(idProducto));
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), producto);
@@ -294,6 +311,95 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
                 .limit(size)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginaResponse<ProductoResponse> listarConFiltros(FiltrosCatalogoDto filtros) {
+        int page = filtros.getPage() != null ? filtros.getPage() : 0;
+        int size = filtros.getSize() != null ? filtros.getSize() : 12;
+        Sort sort = resolverOrden(filtros.getSort());
+        var pageable = PageRequest.of(page, size, sort);
+
+        var resultado = productoRepository.findAll(buildSpec(filtros), pageable);
+        List<ProductoResponse> contenido = resultado.getContent().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        return new PaginaResponse<>(contenido, page, resultado.getTotalPages(), resultado.getTotalElements());
+    }
+
+    private Sort resolverOrden(String sort) {
+        if ("PRICE_ASC".equals(sort))  return Sort.by(Sort.Direction.ASC,  "precioBase");
+        if ("PRICE_DESC".equals(sort)) return Sort.by(Sort.Direction.DESC, "precioBase");
+        return Sort.by(Sort.Direction.DESC, "idProducto");
+    }
+
+    private Specification<Producto> buildSpec(FiltrosCatalogoDto f) {
+        return (root, query, cb) -> {
+            List<Predicate> predicados = new ArrayList<>();
+
+            // Visibilidad del catálogo público
+            Join<Producto, ?> tienda = root.join("tienda", JoinType.LEFT);
+            Join<?, ?>  comerciante  = tienda.join("comerciante", JoinType.LEFT);
+            predicados.add(cb.isTrue(root.get("activo")));
+            predicados.add(cb.isTrue(tienda.get("verificada")));
+            predicados.add(cb.isTrue(comerciante.get("verificado")));
+            predicados.add(cb.isTrue(comerciante.get("activo")));
+
+            // Tipos de producto (ManyToOne → sin duplicados)
+            if (f.getTiposProducto() != null && !f.getTiposProducto().isEmpty()) {
+                Join<Producto, ?> tp = root.join("tipoProducto", JoinType.LEFT);
+                predicados.add(tp.get("nombre").in(f.getTiposProducto()));
+            }
+
+            // Categorías (ManyToOne → sin duplicados)
+            if (f.getCategorias() != null && !f.getCategorias().isEmpty()) {
+                Join<Producto, ?> cat = root.join("categoria", JoinType.LEFT);
+                predicados.add(cat.get("nombreCategoria").in(f.getCategorias()));
+            }
+
+            // Búsqueda por keyword
+            if (f.getQ() != null && !f.getQ().isBlank()) {
+                String like = "%" + f.getQ().toLowerCase() + "%";
+                predicados.add(cb.or(
+                        cb.like(cb.lower(root.get("nombre")),             like),
+                        cb.like(cb.lower(root.get("descripcion")),        like),
+                        cb.like(cb.lower(tienda.get("nombreComercial")),  like)
+                ));
+            }
+
+            // Rango de precio
+            if (f.getPrecioMin() != null)
+                predicados.add(cb.greaterThanOrEqualTo(root.get("precioBase"), f.getPrecioMin()));
+            if (f.getPrecioMax() != null)
+                predicados.add(cb.lessThanOrEqualTo(root.get("precioBase"), f.getPrecioMax()));
+
+            // Color — subquery para evitar duplicados por OneToMany
+            if (f.getColor() != null && !f.getColor().isBlank()) {
+                Subquery<Integer> sub = query.subquery(Integer.class);
+                Root<VarianteProducto> vRoot = sub.from(VarianteProducto.class);
+                Join<?, ?> colorJoin = vRoot.join("color", JoinType.LEFT);
+                sub.select(vRoot.get("idVariante")).where(cb.and(
+                        cb.equal(vRoot.get("producto"), root),
+                        cb.equal(cb.lower(colorJoin.get("nombre")), f.getColor().toLowerCase())
+                ));
+                predicados.add(cb.exists(sub));
+            }
+
+            // Tallas — subquery para evitar duplicados por OneToMany
+            if (f.getTallas() != null && !f.getTallas().isEmpty()) {
+                Subquery<Integer> sub = query.subquery(Integer.class);
+                Root<VarianteProducto> vRoot = sub.from(VarianteProducto.class);
+                Join<?, ?> tallaJoin = vRoot.join("talla", JoinType.LEFT);
+                sub.select(vRoot.get("idVariante")).where(cb.and(
+                        cb.equal(vRoot.get("producto"), root),
+                        tallaJoin.get("talla").in(f.getTallas())
+                ));
+                predicados.add(cb.exists(sub));
+            }
+
+            return cb.and(predicados.toArray(new Predicate[0]));
+        };
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
@@ -373,6 +479,16 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setEsPrincipal(i.getEsPrincipal());
             return d;
         }).collect(Collectors.toList()));
+
+        r.setMaterialPrincipal(p.getMaterialFiltro() != null ? p.getMaterialFiltro().getNombre() : null);
+
+        r.setMateriales(especs.stream()
+                .filter(e -> "material".equalsIgnoreCase(e.getNombre()))
+                .map(Especificacion::getDescripcion)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList()));
+
+        r.setTiendaOfreceEnvio(p.getTienda() != null ? p.getTienda().getOfreceEnvioDomicilio() : null);
 
         r.setEspecificaciones(especs.stream().map(e -> {
             ProductoResponse.EspecificacionDto d = new ProductoResponse.EspecificacionDto();

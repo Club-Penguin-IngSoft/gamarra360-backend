@@ -23,6 +23,9 @@ public class ProductoResponse {
     private String nombreCategoria;
     private Integer idTipoProducto;
     private String nombreTipoProducto;
+    private String materialPrincipal;
+    private List<String> materiales;
+    private Boolean tiendaOfreceEnvio;
     private List<ImagenDto> imagenes;
     private List<EspecificacionDto> especificaciones;
     private List<VarianteDto> variantes;

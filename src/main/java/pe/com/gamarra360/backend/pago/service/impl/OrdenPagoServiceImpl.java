@@ -2,10 +2,13 @@ package pe.com.gamarra360.backend.pago.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 
+import pe.com.gamarra360.backend.enums.EstadoPago;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
 import pe.com.gamarra360.backend.pago.entity.OrdenPago;
 import pe.com.gamarra360.backend.pago.entity.OrdenPagoDetalleResponse;
+import pe.com.gamarra360.backend.pago.entity.Pago;
 import pe.com.gamarra360.backend.pago.repository.OrdenPagoRepository;
+import pe.com.gamarra360.backend.pago.repository.PagoRepository;
 import pe.com.gamarra360.backend.pago.service.OrdenPagoService;
 import pe.com.gamarra360.backend.pedido.entity.DetallePedido;
 import pe.com.gamarra360.backend.pedido.entity.Pedido;
@@ -19,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -28,28 +32,20 @@ public class OrdenPagoServiceImpl extends AbstractCrudService<OrdenPago, Long> i
     private final PedidoRepository pedidoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
     private final ComercianteRepository comercianteRepository;
+    private final PagoRepository pagoRepository;
 
     public OrdenPagoServiceImpl(OrdenPagoRepository ordenPagoRepository,
-                                 PedidoRepository pedidoRepository,
-                                 DetallePedidoRepository detallePedidoRepository,
-                                 ComercianteRepository comercianteRepository) {
+                                PedidoRepository pedidoRepository,
+                                DetallePedidoRepository detallePedidoRepository,
+                                ComercianteRepository comercianteRepository,
+                                PagoRepository pagoRepository) {
         super(ordenPagoRepository, "OrdenPago");
         this.ordenPagoRepository = ordenPagoRepository;
         this.pedidoRepository = pedidoRepository;
         this.detallePedidoRepository = detallePedidoRepository;
         this.comercianteRepository = comercianteRepository;
+        this.pagoRepository = pagoRepository;
     }
-
-    //@Override
-    //@Transactional
-    //public void marcarComoPagado(Long ordenId) {
-        //OrdenPago orden = ordenPagoRepository.findById(ordenId)
-                //.orElseThrow(() -> new RecursoNoEncontradoException(
-                        //"Orden no encontrada: " + ordenId));
-        //orden.confirmarPago(); // usa el mismo metodo que el webhook
-        //ordenPagoRepository.save(orden);
-        //log.info("OrdenPago {} marcada como PAGADA desde frontend.", ordenId);
-    //}
 
     @Override
     protected Logger getLog() { return log; }
@@ -61,6 +57,14 @@ public class OrdenPagoServiceImpl extends AbstractCrudService<OrdenPago, Long> i
     @Transactional(readOnly = true)
     public List<OrdenPago> listarPorCliente(Integer clienteId) {
         return ordenPagoRepository.findByClienteIdOrderByFechaDesc(clienteId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> buscarOrdenIdPorPaymentIntent(String paymentIntentId) {
+        return pagoRepository.findByStripePaymentIntentId(paymentIntentId)
+                .filter(pago -> pago.getEstado() == EstadoPago.PAGADO && pago.getOrdenPagoId() != null)
+                .map(Pago::getOrdenPagoId);
     }
 
     @Override

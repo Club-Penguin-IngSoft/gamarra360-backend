@@ -41,7 +41,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()  // preflight libre
                         .requestMatchers("/api/v1/auth/**", "/actuator/health", "/api/v1/tiendas/publico/**","/api/v1/pagos/webhook").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/s3/upload").permitAll()  // logo en registro de comerciante
-                        .requestMatchers(HttpMethod.GET, "/api/v1/productos", "/api/v1/productos/**").permitAll()  // catálogo público
+                        .requestMatchers(HttpMethod.GET, "/api/v1/productos", "/api/v1/productos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/materiales", "/api/v1/materiales/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->

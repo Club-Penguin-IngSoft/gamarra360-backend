@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
 import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
@@ -43,17 +44,15 @@ public class ProductoController {
     }
 
     /**
-     * Lista productos activos con paginación server-side (catálogo público).
-     *
-     * @param page página 0-based (default 0)
-     * @param size elementos por página (default 12, máx recomendado 500)
+     * Lista productos activos con filtros y paginación server-side (catálogo público).
+     * Acepta cualquier combinación de: tiposProducto, categorias, q, precioMin/Max,
+     * color, tallas, sort, page, size. Todos son opcionales.
      */
     @GetMapping
     public ResponseEntity<PaginaResponse<ProductoResponse>> listar(
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "12") int size) {
-        log.info("GET /api/v1/productos?page={}&size={}", page, size);
-        return ResponseEntity.ok(service.listarPaginado(page, size));
+            @ModelAttribute FiltrosCatalogoDto filtros) {
+        log.info("GET /api/v1/productos filtros={}", filtros);
+        return ResponseEntity.ok(service.listarConFiltros(filtros));
     }
 
     /** Obtiene un producto por ID con detalle completo (público). */

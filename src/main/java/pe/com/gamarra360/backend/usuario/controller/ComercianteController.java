@@ -3,6 +3,9 @@ package pe.com.gamarra360.backend.usuario.controller;
 import com.stripe.model.Account;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.security.core.Authentication;
+import pe.com.gamarra360.backend.security.UsuarioPrincipal;
+import pe.com.gamarra360.backend.usuario.dto.PerfilComercianteDto;
 import pe.com.gamarra360.backend.usuario.entity.Comerciante;
 import pe.com.gamarra360.backend.usuario.service.ComercianteService;
 import org.springframework.http.HttpStatus;
@@ -26,6 +29,24 @@ public class ComercianteController {
     public ComercianteController(ComercianteService service, ComercianteStripeService stripeService) {
         this.service = service;
         this.stripeService=stripeService;
+    }
+
+    @GetMapping("/perfil")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<PerfilComercianteDto> obtenerPerfil(Authentication auth) {
+        Integer id = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("GET /api/v1/comerciantes/perfil - comercianteId={}", id);
+        return ResponseEntity.ok(service.obtenerPerfil(id));
+    }
+
+    @PutMapping("/perfil")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<PerfilComercianteDto> actualizarPerfil(
+            @RequestBody PerfilComercianteDto dto,
+            Authentication auth) {
+        Integer id = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("PUT /api/v1/comerciantes/perfil - comercianteId={}", id);
+        return ResponseEntity.ok(service.actualizarPerfil(id, dto));
     }
 
     @GetMapping
