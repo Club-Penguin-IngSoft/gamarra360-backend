@@ -32,6 +32,8 @@ import pe.com.gamarra360.backend.pedido.entity.DetallePedido;
 import pe.com.gamarra360.backend.pedido.entity.Pedido;
 import pe.com.gamarra360.backend.pedido.repository.DetallePedidoRepository;
 import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
+import pe.com.gamarra360.backend.solicitud.entity.Cotizacion;
+import pe.com.gamarra360.backend.solicitud.repository.CotizacionRepository;
 import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 
 import java.time.LocalDateTime;
@@ -49,6 +51,7 @@ public class StripePaymentService {
     private final VarianteProductoRepository varianteProductoRepository;
     private final DetallePedidoRepository    detallePedidoRepository;
     private final CarritoPendienteRepository carritoPendienteRepository;
+    private final CotizacionRepository       cotizacionRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -188,14 +191,22 @@ public class StripePaymentService {
             log.info("Pedido {} creado para vendedor {} (orden {})",
                     pedido.getId(), grupo.getVendedorId(), orden.getId());
 
+            final Long pedidoIdFinal = pedido.getId();
             for (GrupoTiendaDto.ItemCarritoDto item : grupo.getItems()) {
                 DetallePedido detalle = new DetallePedido();
-                detalle.setPedidoId(pedido.getId());
+                detalle.setPedidoId(pedidoIdFinal);
                 detalle.setIdVarianteProducto(item.getIdVarianteProducto());
                 detalle.setCantidad(item.getCantidad());
                 detalle.setPrecio(item.getPrecio());
                 if (item.getPersonalizacionId() != null) {
                     detalle.setPersonalizacionId(item.getPersonalizacionId());
+                }
+                if (item.getCotizacionId() != null) {
+                    detalle.setCotizacionId(item.getCotizacionId());
+                    cotizacionRepository.findById(item.getCotizacionId()).ifPresent(cotizacion -> {
+                        cotizacion.setPedidoId(pedidoIdFinal);
+                        cotizacionRepository.save(cotizacion);
+                    });
                 }
                 detallePedidoRepository.save(detalle);
             }

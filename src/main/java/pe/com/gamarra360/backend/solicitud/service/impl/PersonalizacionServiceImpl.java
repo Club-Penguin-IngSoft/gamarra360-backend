@@ -18,6 +18,7 @@ import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionComercianteResumen
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionDetalleResponse;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionResumen;
+import pe.com.gamarra360.backend.solicitud.dto.ContraPropuestaRequest;
 import pe.com.gamarra360.backend.solicitud.dto.RespuestaPersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.entity.ItemPersonalizado;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
@@ -137,6 +138,11 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         item.setRespuestaId(respuesta.getIdRespuesta());
         itemPersonalizadoRepository.save(item);
 
+        VarianteProducto variante = p.getVarianteProducto();
+        if (variante != null && variante.getStock() != null && p.getCantidad() != null && p.getCantidad() > 0) {
+            variante.setStock(Math.max(0, variante.getStock() - p.getCantidad()));
+        }
+
         p.aceptar();
         personalizacionRepository.save(p);
 
@@ -209,6 +215,61 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         return toComercianteDetalle(p);
     }
 
+    @Override
+    @Transactional
+    public void cancelarPorCliente(Long id, Integer clienteId) {
+        Personalizacion p = obtenerYValidarPropietario(id, clienteId);
+        if (p.getEstado() == EstadoSolicitud.ACEPTADA) {
+            throw new ConflictoNegocioException("No se puede cancelar una personalización ya aceptada.");
+        }
+        if (p.getEstado() == EstadoSolicitud.RECHAZADA) {
+            throw new ConflictoNegocioException("La personalización ya está cancelada.");
+        }
+        p.cancelar();
+        personalizacionRepository.save(p);
+        log.info("Personalización {} cancelada por cliente {}", id, clienteId);
+    }
+
+    @Override
+    @Transactional
+    public void cancelarPorVendedor(Long id, Integer vendedorId) {
+        Personalizacion p = personalizacionRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Personalizacion", id));
+        if (!vendedorId.equals(p.getVendedorId())) {
+            throw new AccessDeniedException("La personalización no pertenece al comerciante autenticado.");
+        }
+        if (p.getEstado() == EstadoSolicitud.ACEPTADA) {
+            throw new ConflictoNegocioException("No se puede cancelar una personalización ya aceptada.");
+        }
+        if (p.getEstado() == EstadoSolicitud.RECHAZADA) {
+            throw new ConflictoNegocioException("La personalización ya está cancelada.");
+        }
+        p.cancelar();
+        personalizacionRepository.save(p);
+        log.info("Personalización {} cancelada por vendedor {}", id, vendedorId);
+    }
+
+    @Override
+    @Transactional
+    public PersonalizacionDetalleResponse contraProponerCliente(Long id, ContraPropuestaRequest request, Integer clienteId) {
+        Personalizacion p = obtenerYValidarPropietario(id, clienteId);
+        if (p.getEstado() != EstadoSolicitud.RESPONDIDA) {
+            throw new ConflictoNegocioException("Solo se puede enviar una contrapropuesta en estado RESPONDIDA.");
+        }
+        respuestaSolicitudRepository.findByIdSolicitud(id)
+                .ifPresent(r -> respuestaSolicitudRepository.eliminarPorId(r.getIdRespuesta()));
+        if (request.getEspecificacion() != null && !request.getEspecificacion().isBlank()) {
+            p.setDescripcion(request.getEspecificacion());
+        }
+        if (request.getPrecioDeseado() != null) {
+            p.setPrecioDeseado(request.getPrecioDeseado());
+        }
+        p.setEstado(EstadoSolicitud.PENDIENTE);
+        Personalizacion saved = personalizacionRepository.save(p);
+        log.info("Contrapropuesta enviada en personalización {} por cliente {}", id, clienteId);
+        return toDetalle(saved);
+    }
+
     private Personalizacion obtenerYValidarPropietario(Long id, Integer clienteId) {
         Personalizacion p = personalizacionRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Personalizacion", id));
@@ -223,7 +284,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         Producto producto = v != null ? v.getProducto() : null;
 
         Comerciante comerciante = buscarComerciante(p.getVendedorId());
-        String nombreTienda = comerciante != null ? comerciante.getNombreTienda() : null;
+        String nombreTienda = comerciante != null && comerciante.getTienda() != null ? comerciante.getTienda().getNombreComercial() : null;
         String fotoTienda = comerciante != null && comerciante.getTienda() != null ? comerciante.getTienda().getFoto() : null;
 
         String pedidoEstado = buscarPedido(p.getId())
@@ -254,7 +315,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         Producto producto = v != null ? v.getProducto() : null;
 
         Comerciante comerciante = buscarComerciante(p.getVendedorId());
-        String nombreTienda = comerciante != null ? comerciante.getNombreTienda() : null;
+        String nombreTienda = comerciante != null && comerciante.getTienda() != null ? comerciante.getTienda().getNombreComercial() : null;
         String fotoTienda = comerciante != null && comerciante.getTienda() != null ? comerciante.getTienda().getFoto() : null;
 
         int cantidad = p.getCantidad() != null ? p.getCantidad() : 1;
@@ -311,7 +372,8 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                 costoPersonalizacion,
                 total,
                 propuestaInfo,
-                pedidoInfo
+                pedidoInfo,
+                p.getPrecioDeseado()
         );
     }
 
@@ -372,7 +434,8 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                 p.getUrlLogo(),
                 p.getTipoPersonalizacion() != null ? p.getTipoPersonalizacion().name() : null,
                 p.getDescripcion(),
-                propuestaInfo
+                propuestaInfo,
+                p.getPrecioDeseado()
         );
     }
 

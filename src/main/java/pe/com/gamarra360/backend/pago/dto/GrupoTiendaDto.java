@@ -38,6 +38,7 @@ public class GrupoTiendaDto {
         private Integer cantidad;
         private Double precio;
         private Long personalizacionId;
+        private Long cotizacionId;
 
         public ItemCarritoDto() {}
 
@@ -52,5 +53,8 @@ public class GrupoTiendaDto {
 
         public Long getPersonalizacionId() { return personalizacionId; }
         public void setPersonalizacionId(Long personalizacionId) { this.personalizacionId = personalizacionId; }
+
+        public Long getCotizacionId() { return cotizacionId; }
+        public void setCotizacionId(Long cotizacionId) { this.cotizacionId = cotizacionId; }
     }
 }
