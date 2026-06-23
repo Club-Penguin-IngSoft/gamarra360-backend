@@ -20,7 +20,8 @@ public record PersonalizacionComercianteDetalle(
         String urlLogo,
         String tipoPersonalizacion,
         String descripcion,
-        PropuestaInfo propuesta
+        PropuestaInfo propuesta,
+        Double precioDeseado
 ) {
     public record PropuestaInfo(
             Double precioPropuesto,

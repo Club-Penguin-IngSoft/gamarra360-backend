@@ -26,6 +26,8 @@ public class Personalizacion extends Solicitud {
     @Column(name = "tipo_personalizacion")
     private TipoTrabajo tipoPersonalizacion;
     private Integer cantidad;
+    @Column(name = "precio_deseado")
+    private Double precioDeseado;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "detalle_producto_id", insertable = false, updatable = false)
     @JsonIgnore

@@ -8,6 +8,7 @@ import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionComercianteResumen
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionDetalleResponse;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionResumen;
+import pe.com.gamarra360.backend.solicitud.dto.ContraPropuestaRequest;
 import pe.com.gamarra360.backend.solicitud.dto.RespuestaPersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
 import pe.com.gamarra360.backend.solicitud.service.PersonalizacionService;
@@ -84,6 +85,24 @@ public class PersonalizacionController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Cancela la personalización desde el cliente (PENDIENTE o RESPONDIDA → RECHAZADA). */
+    @PatchMapping("/{id}/cancelar")
+    public ResponseEntity<Void> cancelarPorCliente(@PathVariable Long id, Authentication auth) {
+        Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("PATCH /api/v1/personalizaciones/{}/cancelar — cliente {}", id, clienteId);
+        service.cancelarPorCliente(id, clienteId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Envía una contrapropuesta del cliente (RESPONDIDA → PENDIENTE). */
+    @PostMapping("/{id}/contra-proponer")
+    public ResponseEntity<PersonalizacionDetalleResponse> contraProponerCliente(
+            @PathVariable Long id, @RequestBody ContraPropuestaRequest request, Authentication auth) {
+        Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("POST /api/v1/personalizaciones/{}/contra-proponer — cliente {}", id, clienteId);
+        return ResponseEntity.ok(service.contraProponerCliente(id, request, clienteId));
+    }
+
     /**
      * Lista las personalizaciones recibidas por el comerciante autenticado
      * para el "Tablero de Personalización".
@@ -120,6 +139,16 @@ public class PersonalizacionController {
         Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("POST /api/v1/personalizaciones/{}/responder — vendedor {}", id, vendedorId);
         return ResponseEntity.ok(service.responder(id, request, vendedorId));
+    }
+
+    /** El comerciante cancela la personalización (PENDIENTE o RESPONDIDA → RECHAZADA). */
+    @PatchMapping("/comerciante/{id}/cancelar")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<Void> cancelarPorVendedor(@PathVariable Long id, Authentication auth) {
+        Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("PATCH /api/v1/personalizaciones/comerciante/{}/cancelar — vendedor {}", id, vendedorId);
+        service.cancelarPorVendedor(id, vendedorId);
+        return ResponseEntity.noContent().build();
     }
 
     /**
