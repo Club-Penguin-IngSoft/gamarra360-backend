@@ -134,7 +134,7 @@ public class ComercianteStripeServiceImpl implements ComercianteStripeService {
         AccountLinkCreateParams params = AccountLinkCreateParams.builder()
                 .setAccount(stripeAccountId)
                 .setRefreshUrl(frontendUrl + "/comerciante/stripe/refresh/" + comercianteId)
-                .setReturnUrl(frontendUrl + "/comerciante/stripe/completado")
+                .setReturnUrl(frontendUrl + "/comerciante/stripe/completado?account=" + stripeAccountId)
                 .setType(AccountLinkCreateParams.Type.ACCOUNT_ONBOARDING)
                 .build();
 
