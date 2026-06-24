@@ -317,7 +317,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
 
     private PersonalizacionComercianteResumen toComercianteResumen(Personalizacion p) {
         Cliente cliente = p.getClienteId() != null ? clienteRepository.findById(p.getClienteId()).orElse(null) : null;
-        String nombreCliente = cliente != null ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null;
+        String nombreCliente = cliente != null ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null;
         String emailCliente = cliente != null ? cliente.getEmail() : null;
 
         String pedidoEstado = buscarPedido(p.getId())
@@ -340,7 +340,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         Producto producto = v != null ? v.getProducto() : null;
 
         Cliente cliente = p.getClienteId() != null ? clienteRepository.findById(p.getClienteId()).orElse(null) : null;
-        String nombreCliente = cliente != null ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null;
+        String nombreCliente = cliente != null ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null;
         String emailCliente = cliente != null ? cliente.getEmail() : null;
         int totalPedidosCliente = pedidoRepository
                 .findByClienteIdAndVendedorIdOrderByFechaDesc(p.getClienteId(), p.getVendedorId())

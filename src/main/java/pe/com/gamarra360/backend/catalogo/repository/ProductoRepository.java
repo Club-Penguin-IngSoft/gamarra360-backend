@@ -27,6 +27,10 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer>, Jp
 
     List<Producto> findByIdTiendaAndActivoTrue(Integer idTienda);
 
+    List<Producto> findByIdProductoInAndIdTienda(List<Integer> idProductos, Integer idTienda);
+
+    List<Producto> findByOferta_IdOferta(Integer idOferta);
+
     List<Producto> findByActivoTrue();
 
     /** Versión paginada — usada por el catálogo público (server-side pagination). */

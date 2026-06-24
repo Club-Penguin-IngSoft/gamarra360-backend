@@ -98,7 +98,7 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
                 p.getEstado() != null ? p.getEstado().name() : null,
                 p.getTotal(),
                 p.getClienteId(),
-                cliente != null ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null,
+                cliente != null ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null,
                 cliente != null ? cliente.getEmail() : null
         );
     }
@@ -131,7 +131,7 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
                 p.getTipoEntrega() != null ? p.getTipoEntrega().name() : null,
                 p.getDireccionEntrega(),
                 p.getClienteId(),
-                cliente != null ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null,
+                cliente != null ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null,
                 cliente != null ? cliente.getEmail() : null,
                 items,
                 historial
