@@ -91,6 +91,7 @@ public class ComercianteServiceImpl extends AbstractCrudService<Comerciante, Int
         dto.setRazonSocial(c.getRazonSocial());
         dto.setRuc(c.getRuc());
         dto.setLogoUrl(c.getLogoUrl());
+        dto.setVerificada(Boolean.TRUE.equals(c.getVerificado()));
         if (tienda != null) {
             dto.setNombreTienda(tienda.getNombreComercial());
             dto.setInformacion(tienda.getInformacion());
