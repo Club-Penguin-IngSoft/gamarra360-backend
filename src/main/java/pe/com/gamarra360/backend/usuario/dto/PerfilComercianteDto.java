@@ -23,6 +23,7 @@ public class PerfilComercianteDto {
     private String razonSocial;
     private String ruc;             // solo lectura — identificador fiscal
     private String logoUrl;
+    private Boolean verificada;
 
     // ── Tienda ────────────────────────────────────────────────────────────────
     private String nombreTienda;
