@@ -93,7 +93,7 @@ public class StripePaymentService {
 
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                 .setAmount(totalCentimos)
-                .setCurrency("pen")
+                .setCurrency("usd")
                 .setDescription("Compra Gamarra360 - Carrito #" + carrito.getId())
                 .setAutomaticPaymentMethods(
                         PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
@@ -123,7 +123,7 @@ public class StripePaymentService {
                 pago.getId(),
                 intent.getClientSecret(),
                 totalCentimos,
-                "pen"
+                "usd"
         );
     }
 
@@ -255,7 +255,7 @@ public class StripePaymentService {
             try {
                 TransferCreateParams transferParams = TransferCreateParams.builder()
                         .setAmount(montoVendedor)
-                        .setCurrency("pen")
+                        .setCurrency("usd")
                         .setDestination(comerciante.getStripeAccountId())
                         .setSourceTransaction(intent.getLatestCharge())
                         .putMetadata("pedido_id",   String.valueOf(pedido.getId()))
