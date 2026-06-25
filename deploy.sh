@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # ── Configuración ──────────────────────────────────────────────────────────────
-EC2_HOST="${EC2_HOST:-}"   # IP pública o dominio del EC2 (ej. 54.123.45.67 o gamarra360.duckdns.org)
+EC2_HOST="${EC2_HOST:-54.80.119.80}"
 EC2_USER="${EC2_USER:-ubuntu}"
 EC2_KEY="${EC2_KEY:-~/.ssh/gamarra360.pem}"
 APP_PORT="${APP_PORT:-8080}"
@@ -32,12 +32,20 @@ error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 # ── Validaciones previas ───────────────────────────────────────────────────────
 [ -z "$EC2_HOST" ] && error "EC2_HOST no definido. Exporta la variable o edita el script."
 [ -f "$EC2_KEY" ] || error "Clave SSH no encontrada: $EC2_KEY"
-command -v mvn &>/dev/null || error "Maven no está instalado"
 command -v ssh &>/dev/null || error "SSH no está disponible"
 
+# Detectar Maven: prioriza mvn global, cae a mvnw del proyecto
+if command -v mvn &>/dev/null; then
+  MVN="mvn"
+elif [ -f "./mvnw" ]; then
+  MVN="./mvnw"
+else
+  error "No se encontró mvn ni ./mvnw. Instala Maven o ejecuta desde la raíz del proyecto."
+fi
+
 # ── 1. Build del JAR ──────────────────────────────────────────────────────────
-info "Compilando proyecto Spring Boot..."
-mvn clean package -DskipTests -q
+info "Compilando proyecto Spring Boot (usando $MVN)..."
+$MVN clean package -DskipTests -q
 JAR_PATH=$(find target -name "*.jar" ! -name "*sources*" | head -1)
 [ -z "$JAR_PATH" ] && error "No se encontró el JAR en target/"
 info "JAR generado: $JAR_PATH"
@@ -47,10 +55,18 @@ info "Preparando directorio en EC2 ($EC2_HOST)..."
 ssh -i "$EC2_KEY" -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" \
   "sudo mkdir -p $DEPLOY_DIR && sudo chown $EC2_USER:$EC2_USER $DEPLOY_DIR"
 
-# ── 3. Subir JAR ──────────────────────────────────────────────────────────────
+# ── 3. Subir JAR y archivo .env ───────────────────────────────────────────────
 info "Subiendo JAR al servidor..."
 scp -i "$EC2_KEY" -o StrictHostKeyChecking=no \
   "$JAR_PATH" "$EC2_USER@$EC2_HOST:$DEPLOY_DIR/$JAR_NAME"
+
+if [ -f ".env.example" ]; then
+  ENV_FILE=".env.example"
+  [ -f ".env.prod" ] && ENV_FILE=".env.prod"
+  info "Subiendo archivo de entorno ($ENV_FILE → $DEPLOY_DIR/.env)..."
+  scp -i "$EC2_KEY" -o StrictHostKeyChecking=no \
+    "$ENV_FILE" "$EC2_USER@$EC2_HOST:$DEPLOY_DIR/.env"
+fi
 
 # ── 4. Crear/actualizar servicio systemd ──────────────────────────────────────
 info "Configurando servicio systemd..."
