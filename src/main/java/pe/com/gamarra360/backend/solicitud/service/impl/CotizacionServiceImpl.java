@@ -13,6 +13,7 @@ import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.enums.EstadoSolicitud;
 import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
+import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
 import pe.com.gamarra360.backend.service.AbstractCrudService;
 import pe.com.gamarra360.backend.solicitud.dto.*;
 import pe.com.gamarra360.backend.solicitud.entity.*;
@@ -35,6 +36,7 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
     private final ProductoCotizadoManualRepository productoCotizadoManualRepository;
     private final RespuestaSolicitudRepository respuestaSolicitudRepository;
     private final ClienteRepository clienteRepository;
+    private final PedidoRepository pedidoRepository;
 
     public CotizacionServiceImpl(CotizacionRepository cotizacionRepository,
                                   TiendaRepository tiendaRepository,
@@ -42,7 +44,8 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                                   CotizacionCatalogoRepository cotizacionCatalogoRepository,
                                   ProductoCotizadoManualRepository productoCotizadoManualRepository,
                                   RespuestaSolicitudRepository respuestaSolicitudRepository,
-                                  ClienteRepository clienteRepository) {
+                                  ClienteRepository clienteRepository,
+                                  PedidoRepository pedidoRepository) {
         super(cotizacionRepository, "Cotizacion");
         this.cotizacionRepository = cotizacionRepository;
         this.tiendaRepository = tiendaRepository;
@@ -51,6 +54,7 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         this.productoCotizadoManualRepository = productoCotizadoManualRepository;
         this.respuestaSolicitudRepository = respuestaSolicitudRepository;
         this.clienteRepository = clienteRepository;
+        this.pedidoRepository = pedidoRepository;
     }
 
     @Override
@@ -261,6 +265,13 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         String nombreCliente = cliente != null
                 ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null;
 
+        String pedidoEstado = null;
+        if (c.getPedidoId() != null) {
+            pedidoEstado = pedidoRepository.findById(c.getPedidoId())
+                    .map(p -> p.getEstado() != null ? p.getEstado().name() : null)
+                    .orElse(null);
+        }
+
         return new CotizacionResumen(
                 c.getId(),
                 c.getEstado() != null ? c.getEstado().name() : null,
@@ -270,7 +281,9 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                 tienda != null ? tienda.getFoto() : null,
                 cantidad,
                 precio,
-                nombreCliente
+                nombreCliente,
+                c.getPedidoId(),
+                pedidoEstado
         );
     }
 
@@ -289,6 +302,13 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         RespuestaSolicitud respuesta = respuestaSolicitudRepository.findByIdSolicitud(c.getId()).orElse(null);
         CotizacionDetalleResponse.RespuestaInfo respuestaInfo = toRespuestaInfo(respuesta);
 
+        String pedidoEstado = null;
+        if (c.getPedidoId() != null) {
+            pedidoEstado = pedidoRepository.findById(c.getPedidoId())
+                    .map(p -> p.getEstado() != null ? p.getEstado().name() : null)
+                    .orElse(null);
+        }
+
         return new CotizacionDetalleResponse(
                 c.getId(),
                 c.getEstado() != null ? c.getEstado().name() : null,
@@ -301,7 +321,8 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                 productos,
                 respuestaInfo,
                 c.getPrecioDeseado(),
-                c.getPedidoId()
+                c.getPedidoId(),
+                pedidoEstado
         );
     }
 

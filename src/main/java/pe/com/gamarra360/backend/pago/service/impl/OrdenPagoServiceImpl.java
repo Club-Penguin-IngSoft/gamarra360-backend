@@ -133,17 +133,29 @@ public class OrdenPagoServiceImpl extends AbstractCrudService<OrdenPago, Long> i
                     .map(i -> i.getUrl())
                     .orElse(null);
         }
+
+        String nombreProducto = v != null && v.getProducto() != null ? v.getProducto().getNombre() : null;
+        if (nombreProducto == null) {
+            if (dp.getCotizacionId() != null) {
+                nombreProducto = "Cotización #" + dp.getCotizacionId();
+            } else if (dp.getPersonalizacionId() != null) {
+                nombreProducto = "Personalización #" + dp.getPersonalizacionId();
+            }
+        }
+
         return new OrdenPagoDetalleResponse.DetalleResumen(
                 dp.getId(),
                 dp.getIdVarianteProducto(),
                 v != null && v.getProducto() != null ? v.getProducto().getIdProducto() : null,
-                v != null && v.getProducto() != null ? v.getProducto().getNombre() : null,
+                nombreProducto,
                 imagenUrl,
                 v != null && v.getTalla() != null ? v.getTalla().getTalla() : null,
                 v != null && v.getColor() != null ? v.getColor().getNombre() : null,
                 v != null ? v.getSku() : null,
                 dp.getCantidad(),
-                dp.getPrecio()
+                dp.getPrecio(),
+                dp.getCotizacionId(),
+                dp.getPersonalizacionId()
         );
     }
 }
