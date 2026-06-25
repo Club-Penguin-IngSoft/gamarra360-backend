@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import pe.com.gamarra360.backend.catalogo.entity.Producto;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
+import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
 import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteDetalle;
 import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteResumen;
 import pe.com.gamarra360.backend.pedido.entity.DetallePedido;
@@ -63,6 +64,33 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
         }
         pedido.cambiarEstado(EstadoPedido.CANCELADO);
         actualizar(id, pedido);
+    }
+
+    /* ── Comerciante: avanzar estado del pedido ─────────────────────────── */
+
+    private static final java.util.Map<EstadoPedido, EstadoPedido> SIGUIENTE_ESTADO = java.util.Map.of(
+            EstadoPedido.RECIBIDO,            EstadoPedido.EN_PREPARACION,
+            EstadoPedido.EN_PREPARACION,      EstadoPedido.EN_CAMINO,
+            EstadoPedido.EN_CAMINO,           EstadoPedido.LISTO_PARA_ENTREGA,
+            EstadoPedido.LISTO_PARA_ENTREGA,  EstadoPedido.ENTREGADO
+    );
+
+    @Override
+    @Transactional
+    public Pedido avanzarEstado(Long id, Integer vendedorId) {
+        log.info("Avanzando estado del pedido {} — vendedorId={}", id, vendedorId);
+        Pedido pedido = obtener(id);
+        if (!vendedorId.equals(pedido.getVendedorId())) {
+            throw new AccessDeniedException("El pedido no pertenece al comerciante autenticado.");
+        }
+        EstadoPedido siguiente = SIGUIENTE_ESTADO.get(pedido.getEstado());
+        if (siguiente == null) {
+            throw new ConflictoNegocioException("El pedido ya está en estado final: " + pedido.getEstado());
+        }
+        pedido.cambiarEstado(siguiente);
+        actualizar(id, pedido);
+        log.info("Pedido {} avanzó a {}", id, siguiente);
+        return pedido;
     }
 
     /* ── Comerciante: listar pedidos ─────────────────────────────────────── */

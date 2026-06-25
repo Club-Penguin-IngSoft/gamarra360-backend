@@ -13,4 +13,6 @@ public interface PedidoService extends CrudService<Pedido, Long> {
     List<PedidoComercianteResumen> listarPorVendedor(Integer vendedorId);
 
     PedidoComercianteDetalle obtenerDetalleComerciante(Long id, Integer vendedorId);
+
+    Pedido avanzarEstado(Long id, Integer vendedorId);
 }

@@ -66,6 +66,14 @@ public class PedidoController {
         return ResponseEntity.ok(service.obtener(id));
     }
 
+    @PatchMapping("/{id}/avanzar-estado")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<Pedido> avanzarEstado(@PathVariable Long id, Authentication auth) {
+        Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("PATCH /api/v1/pedidos/{}/avanzar-estado — vendedorId={}", id, vendedorId);
+        return ResponseEntity.ok(service.avanzarEstado(id, vendedorId));
+    }
+
     @GetMapping("/comerciante")
     @PreAuthorize("hasRole('VENDEDOR')")
     public ResponseEntity<List<PedidoComercianteResumen>> pedidosComerciante(Authentication auth) {
