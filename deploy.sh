@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # ── Configuración ──────────────────────────────────────────────────────────────
-EC2_HOST="${EC2_HOST:-54.80.119.80}"
+EC2_HOST="${EC2_HOST:-3.81.79.177}"   # OJO: cambia en cada reinicio del EC2 si no hay Elastic IP
 EC2_USER="${EC2_USER:-ubuntu}"
 EC2_KEY="${EC2_KEY:-~/.ssh/gamarra360.pem}"
 APP_PORT="${APP_PORT:-8080}"
