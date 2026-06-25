@@ -3,6 +3,7 @@ package pe.com.gamarra360.backend.usuario.dto;
 import lombok.Getter;
 import lombok.Setter;
 
+import pe.com.gamarra360.backend.enums.GaleriaEnum;
 import pe.com.gamarra360.backend.enums.RolEnum;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -30,4 +31,6 @@ public class RegistroUsuarioRequest {
     private String tipoDocumento;
     private String nombreTienda;
     private String logoUrl;
+    private GaleriaEnum galeria;
+    private Boolean ofreceEnvioDomicilio;
 }

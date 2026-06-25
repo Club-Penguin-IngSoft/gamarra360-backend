@@ -63,6 +63,13 @@ public class OrdenPagoController {
         service.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+    @GetMapping("/buscar-por-intent/{paymentIntentId}")
+    public ResponseEntity<Long> buscarPorPaymentIntent(@PathVariable String paymentIntentId) {
+        log.info("GET /api/v1/ordenes-pago/buscar-por-intent/{}", paymentIntentId);
+        return service.buscarOrdenIdPorPaymentIntent(paymentIntentId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
     //@PatchMapping("/{id}/marcar-pagado")
     //public ResponseEntity<Void> marcarPagado(@PathVariable Long id) {
         //log.info("PATCH /api/v1/ordenes-pago/{}/marcar-pagado", id);

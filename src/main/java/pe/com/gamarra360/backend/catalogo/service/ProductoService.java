@@ -1,5 +1,6 @@
 package pe.com.gamarra360.backend.catalogo.service;
 
+import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
 import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
@@ -27,6 +28,9 @@ public interface ProductoService extends CrudService<Producto, Integer> {
      * @param size número de elementos por página
      */
     PaginaResponse<ProductoResponse> listarPaginado(int page, int size);
+
+    /** Lista productos aplicando todos los filtros del catálogo (tipoProducto, categoría, precio, etc.). */
+    PaginaResponse<ProductoResponse> listarConFiltros(FiltrosCatalogoDto filtros);
 
     /** Lista los productos activos de una tienda específica. */
     List<ProductoResponse> listarPorTienda(Integer idTienda);

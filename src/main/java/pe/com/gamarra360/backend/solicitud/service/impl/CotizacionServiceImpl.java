@@ -190,6 +190,55 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         return toDetalle(cotizacion);
     }
 
+    /* ── Cliente envía contrapropuesta ──────────────────────────────────── */
+
+    @Override
+    @Transactional
+    public CotizacionDetalleResponse contraProponerCotizacion(Long id, ContraPropuestaRequest request, Integer clienteId) {
+        Cotizacion cotizacion = obtenerYValidarCliente(id, clienteId);
+        if (cotizacion.getEstado() != EstadoSolicitud.RESPONDIDA) {
+            throw new ConflictoNegocioException("Solo se puede enviar una contrapropuesta cuando la cotización está en estado RESPONDIDA.");
+        }
+        if (request.getPrecioDeseado() != null) {
+            cotizacion.setPrecioDeseado(request.getPrecioDeseado());
+        }
+        if (request.getEspecificacion() != null) {
+            List<DetalleCotizacion> detalles = detalleCotizacionRepository.findByIdCotizacion(id);
+            if (!detalles.isEmpty()) {
+                DetalleCotizacion detalle = detalles.get(0);
+                detalle.setEspecificacion(request.getEspecificacion());
+                detalleCotizacionRepository.save(detalle);
+            }
+        }
+        respuestaSolicitudRepository.findByIdSolicitud(id)
+                .ifPresent(r -> respuestaSolicitudRepository.eliminarPorId(r.getIdRespuesta()));
+        cotizacion.setEstado(EstadoSolicitud.PENDIENTE);
+        Cotizacion saved = cotizacionRepository.save(cotizacion);
+        log.info("Cotización {} con contrapropuesta del cliente {}", id, clienteId);
+        return toDetalle(saved);
+    }
+
+    /* ── Comerciante cancela ─────────────────────────────────────────────── */
+
+    @Override
+    @Transactional
+    public void cancelarPorVendedor(Long id, Integer vendedorId) {
+        Cotizacion cotizacion = cotizacionRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cotizacion con id " + id));
+        if (!vendedorId.equals(cotizacion.getVendedorId())) {
+            throw new AccessDeniedException("La cotización no pertenece al comerciante autenticado.");
+        }
+        if (cotizacion.getEstado() == EstadoSolicitud.ACEPTADA) {
+            throw new ConflictoNegocioException("No se puede cancelar una cotización ya aceptada por el cliente.");
+        }
+        if (cotizacion.getEstado() == EstadoSolicitud.RECHAZADA) {
+            throw new ConflictoNegocioException("La cotización ya está cancelada.");
+        }
+        cotizacion.cancelar();
+        cotizacionRepository.save(cotizacion);
+        log.info("Cotización {} cancelada por vendedor {}", id, vendedorId);
+    }
+
     /* ── Helpers privados ────────────────────────────────────────────────── */
 
     private Cotizacion obtenerYValidarCliente(Long id, Integer clienteId) {
@@ -250,7 +299,9 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                 tienda != null ? tienda.getNombreComercial() : null,
                 tienda != null ? tienda.getFoto() : null,
                 productos,
-                respuestaInfo
+                respuestaInfo,
+                c.getPrecioDeseado(),
+                c.getPedidoId()
         );
     }
 

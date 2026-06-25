@@ -5,9 +5,11 @@ import pe.com.gamarra360.backend.pago.entity.OrdenPago;
 import pe.com.gamarra360.backend.pago.entity.OrdenPagoDetalleResponse;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface OrdenPagoService extends CrudService<OrdenPago, Long> {
     List<OrdenPago> listarPorCliente(Integer clienteId);
     OrdenPagoDetalleResponse obtenerDetalle(Long ordenPagoId);
+    Optional<Long> buscarOrdenIdPorPaymentIntent(String paymentIntentId);
     //void marcarComoPagado(Long ordenId);
 }

@@ -79,4 +79,8 @@ public class Producto {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_tipo_producto")
     private TipoProducto tipoProducto;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_material_filtro")
+    private MaterialFiltro materialFiltro;
 }
