@@ -1,5 +1,6 @@
 package pe.com.gamarra360.backend.usuario.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -32,5 +33,6 @@ public class PerfilComercianteDto {
     private String piso;
     private String stand;
     private String foto;
+    @JsonProperty("ofreceEnvio")
     private Boolean ofreceEnvioDomicilio;
 }

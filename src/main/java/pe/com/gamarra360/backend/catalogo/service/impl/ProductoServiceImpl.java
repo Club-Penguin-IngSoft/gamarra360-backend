@@ -13,6 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import pe.com.gamarra360.backend.catalogo.dto.EspecificacionProductoDto;
 import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
 import pe.com.gamarra360.backend.catalogo.dto.ImagenRequest;
+import pe.com.gamarra360.backend.catalogo.dto.OfertaResumenDto;
 import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
@@ -31,6 +32,7 @@ import pe.com.gamarra360.backend.solicitud.repository.CotizacionCatalogoReposito
 import pe.com.gamarra360.backend.usuario.entity.Comerciante;
 import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -414,6 +416,20 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
                 .orElse(precioBase);
     }
 
+    private boolean esOfertaActiva(Oferta oferta) {
+        if (oferta == null || !Boolean.TRUE.equals(oferta.getActiva())) return false;
+        LocalDateTime now = LocalDateTime.now();
+        return !now.isBefore(oferta.getFechaInicio()) && !now.isAfter(oferta.getFechaFin());
+    }
+
+    private Double calcularPrecioConOferta(Double precioBase, Oferta oferta) {
+        if (precioBase == null) return null;
+        return switch (oferta.getTipoDescuento()) {
+            case PORCENTAJE -> precioBase - (precioBase * (oferta.getValorDescuento() / 100.0));
+            case MONTO_FIJO -> Math.max(0.0, precioBase - oferta.getValorDescuento());
+        };
+    }
+
     private List<ImagenProducto> guardarImagenes(List<ImagenRequest> imagenes, Producto producto) {
         List<ImagenProducto> result = new ArrayList<>();
         for (ImagenRequest imgReq : imagenes) {
@@ -456,7 +472,16 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setNombre(p.getNombre());
         r.setDescripcion(p.getDescripcion());
         r.setPrecioBase(p.getPrecioBase());
-        r.setPrecioFinal(calcularPrecioFinal(p.getPrecioBase(), p.getDescuentosVolumen()));
+
+        Oferta oferta = p.getOferta();
+        if (esOfertaActiva(oferta)) {
+            r.setPrecioFinal(calcularPrecioConOferta(p.getPrecioBase(), oferta));
+            r.setOferta(new OfertaResumenDto(oferta.getTitulo(), oferta.getTipoDescuento(), oferta.getValorDescuento()));
+        } else {
+            r.setPrecioFinal(calcularPrecioFinal(p.getPrecioBase(), p.getDescuentosVolumen()));
+            r.setOferta(null);
+        }
+
         r.setEsPersonalizable(p.getEsPersonalizable());
         r.setActivo(p.getActivo());
         r.setIdTienda(p.getIdTienda());

@@ -83,4 +83,8 @@ public class Producto {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_material_filtro")
     private MaterialFiltro materialFiltro;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_oferta")
+    private Oferta oferta;
 }
