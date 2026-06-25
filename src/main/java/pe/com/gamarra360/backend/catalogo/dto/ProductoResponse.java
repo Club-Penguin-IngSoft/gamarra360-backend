@@ -26,6 +26,7 @@ public class ProductoResponse {
     private String materialPrincipal;
     private List<String> materiales;
     private Boolean tiendaOfreceEnvio;
+    private OfertaResumenDto oferta;
     private List<ImagenDto> imagenes;
     private List<EspecificacionDto> especificaciones;
     private List<VarianteDto> variantes;

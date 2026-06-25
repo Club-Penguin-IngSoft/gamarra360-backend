@@ -18,6 +18,8 @@ import pe.com.gamarra360.backend.usuario.entity.Admin;
 import pe.com.gamarra360.backend.usuario.entity.Cliente;
 import pe.com.gamarra360.backend.usuario.entity.Comerciante;
 import pe.com.gamarra360.backend.usuario.entity.Usuario;
+import pe.com.gamarra360.backend.catalogo.entity.Tienda;
+import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.usuario.repository.UsuarioRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -38,12 +40,16 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final TiendaRepository tiendaRepository;
 
-    public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, JwtService jwtService, AuthenticationManager authenticationManager) {
+    public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
+                       JwtService jwtService, AuthenticationManager authenticationManager,
+                       TiendaRepository tiendaRepository) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
+        this.tiendaRepository = tiendaRepository;
     }
 
     public AuthResponse googleLogin(GoogleLoginRequest request) {
@@ -126,9 +132,6 @@ public class AuthService {
         usuario.setActivo(true);
         usuario.setTipoDocumento(request.getTipoDocumento());
         usuario.setProveedorAuth(ProveedorAuth.GOOGLE);
-        //Cliente
-        usuario.setNombre(request.getNombres());
-        usuario.setApellido(request.getPrimerApellido());
         Usuario guardado = usuarioRepository.save(usuario);
         String token = jwtService.generarToken(new UsuarioPrincipal(guardado));
         return new AuthResponse(
@@ -171,6 +174,22 @@ public class AuthService {
         usuario.setApellidoComerciante(request.getPrimerApellido());
         usuario.setAprobado(false);//aprueba o rechaza
         Usuario savedUser = usuarioRepository.save(usuario);
+
+        // Crear Tienda desde el registro para poder persistir los datos de tienda inmediatamente.
+        // aprobar() la reutilizará en lugar de crear una nueva.
+        Tienda tienda = new Tienda();
+        tienda.setIdComerciante(savedUser.getUsuarioId());
+        tienda.setNombreComercial(request.getNombreTienda() != null
+                ? request.getNombreTienda()
+                : request.getRazonSocial());
+        tienda.setInformacion(request.getInformacion());
+        tienda.setPiso(request.getPiso());
+        tienda.setStand(request.getStand());
+        tienda.setGaleria(request.getGaleria());
+        tienda.setOfreceEnvioDomicilio(Boolean.TRUE.equals(request.getOfreceEnvioDomicilio()));
+        tienda.setVerificada(false);
+        tiendaRepository.save(tienda);
+
         String token = jwtService.generarToken(new UsuarioPrincipal(savedUser));
         return new AuthResponse(
                 token,
@@ -193,10 +212,7 @@ public class AuthService {
 
     private Usuario crearUsuarioPorRol(RegistroUsuarioRequest request) {
         if (request.getRol() == RolEnum.CLIENTE) {
-            Cliente cliente = new Cliente();
-            cliente.setNombre(request.getNombre());
-            cliente.setApellido(request.getApellido());
-            return cliente;
+            return new Cliente();
         }
         if (request.getRol() == RolEnum.VENDEDOR) {
             Comerciante comerciante = new Comerciante();

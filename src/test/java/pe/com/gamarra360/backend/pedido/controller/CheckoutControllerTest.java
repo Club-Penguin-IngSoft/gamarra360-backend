@@ -57,6 +57,7 @@ class CheckoutControllerTest {
                 1,
                 "DELIVERY",
                 "Av. Larco 123",
+                1,           // idDistrito
                 100.0,
                 List.of(new PedidoRequestDTO.ItemDTO(1, 2, 50.0))
         );
@@ -74,7 +75,8 @@ class CheckoutControllerTest {
     @DisplayName("POST /api/v1/checkout - Debería retornar 201 Created")
     void checkout_DeberiaRetornarCreated() throws Exception {
         PedidoResponseDTO mockResponse = new PedidoResponseDTO(
-                1L, 10L, "PENDIENTE_CONFIRMACION", "PAGADO", 100.0
+                1L, 10L, "PENDIENTE_CONFIRMACION", "PAGADO",
+                110.0, 10.0, "Miraflores", "Lima", "2026-06-26"
         );
         
         when(checkoutService.procesarCompra(any(PedidoRequestDTO.class), any()))
