@@ -6,6 +6,7 @@ import pe.com.gamarra360.backend.solicitud.dto.CotizacionRequest;
 import pe.com.gamarra360.backend.solicitud.dto.CotizacionResumen;
 import pe.com.gamarra360.backend.solicitud.dto.ContraPropuestaRequest;
 import pe.com.gamarra360.backend.solicitud.dto.RespuestaCotizacionRequest;
+import pe.com.gamarra360.backend.solicitud.dto.ResumenItemCotizacion;
 import pe.com.gamarra360.backend.solicitud.entity.Cotizacion;
 
 import java.util.List;
@@ -29,4 +30,11 @@ public interface CotizacionService extends CrudService<Cotizacion, Long> {
     CotizacionDetalleResponse contraProponerCotizacion(Long id, ContraPropuestaRequest request, Integer clienteId);
 
     void cancelarPorVendedor(Long id, Integer vendedorId);
+
+    /**
+     * Nombre e imagen del primer producto de la cotización (catálogo o manual),
+     * para representar el ítem en los pedidos derivados de la cotización.
+     * Devuelve {@code null} si la cotización no tiene productos.
+     */
+    ResumenItemCotizacion obtenerResumenItem(Long cotizacionId);
 }

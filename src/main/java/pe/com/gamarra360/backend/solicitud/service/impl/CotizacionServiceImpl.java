@@ -243,6 +243,26 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         log.info("Cotización {} cancelada por vendedor {}", id, vendedorId);
     }
 
+    /* ── Resumen del ítem para pedidos derivados ─────────────────────────── */
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResumenItemCotizacion obtenerResumenItem(Long cotizacionId) {
+        List<DetalleCotizacion> detalles = detalleCotizacionRepository.findByIdCotizacion(cotizacionId);
+        if (detalles.isEmpty()) return null;
+
+        DetalleCotizacion primero = detalles.stream()
+                .min(java.util.Comparator.comparing(DetalleCotizacion::getDetalleCotizacionId))
+                .orElse(detalles.get(0));
+
+        CotizacionDetalleResponse.ProductoDetalleInfo info = toProductoInfo(primero);
+        String nombre = info.getNombre() != null ? info.getNombre() : "Cotización #" + cotizacionId;
+        if (detalles.size() > 1) {
+            nombre = nombre + " (+" + (detalles.size() - 1) + " más)";
+        }
+        return new ResumenItemCotizacion(nombre, info.getImagenUrl());
+    }
+
     /* ── Helpers privados ────────────────────────────────────────────────── */
 
     private Cotizacion obtenerYValidarCliente(Long id, Integer clienteId) {

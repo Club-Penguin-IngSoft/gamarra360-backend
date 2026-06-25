@@ -14,8 +14,10 @@ import pe.com.gamarra360.backend.pedido.repository.DetallePedidoRepository;
 import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
 import pe.com.gamarra360.backend.pedido.service.PedidoService;
 import pe.com.gamarra360.backend.service.AbstractCrudService;
+import pe.com.gamarra360.backend.solicitud.dto.ResumenItemCotizacion;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
 import pe.com.gamarra360.backend.solicitud.repository.PersonalizacionRepository;
+import pe.com.gamarra360.backend.solicitud.service.CotizacionService;
 import pe.com.gamarra360.backend.usuario.entity.Cliente;
 import pe.com.gamarra360.backend.usuario.repository.ClienteRepository;
 import org.slf4j.Logger;
@@ -33,16 +35,19 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
     private final DetallePedidoRepository detallePedidoRepository;
     private final ClienteRepository clienteRepository;
     private final PersonalizacionRepository personalizacionRepository;
+    private final CotizacionService cotizacionService;
 
     public PedidoServiceImpl(PedidoRepository pedidoRepository,
                               DetallePedidoRepository detallePedidoRepository,
                               ClienteRepository clienteRepository,
-                              PersonalizacionRepository personalizacionRepository) {
+                              PersonalizacionRepository personalizacionRepository,
+                              CotizacionService cotizacionService) {
         super(pedidoRepository, "Pedido");
         this.pedidoRepository = pedidoRepository;
         this.detallePedidoRepository = detallePedidoRepository;
         this.clienteRepository = clienteRepository;
         this.personalizacionRepository = personalizacionRepository;
+        this.cotizacionService = cotizacionService;
     }
 
     @Override
@@ -181,6 +186,16 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
             talla = v.getTalla() != null ? v.getTalla().getTalla() : null;
             color = v.getColor() != null ? v.getColor().getNombre() : null;
             sku = v.getSku();
+        }
+
+        // Ítems provenientes de una cotización no tienen variante: tomamos nombre
+        // e imagen del producto original de la cotización.
+        if (nombreProducto == null && dp.getCotizacionId() != null) {
+            ResumenItemCotizacion resumen = cotizacionService.obtenerResumenItem(dp.getCotizacionId());
+            if (resumen != null) {
+                nombreProducto = resumen.nombre();
+                if (imagenUrl == null) imagenUrl = resumen.imagenUrl();
+            }
         }
 
         PedidoComercianteDetalle.PersonalizacionInfo personalizacion = null;
