@@ -13,7 +13,11 @@ import pe.com.gamarra360.backend.pedido.entity.Carrito;
 @Getter
 @Setter
 public class Cliente extends Usuario {
+
+    @Transient
     private String nombre;
+
+    @Transient
     private String apellido;
 
     @Column(name= "direccion_entrega")
