@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # ── Configuración ──────────────────────────────────────────────────────────────
-EC2_HOST="${EC2_HOST:-ingechow.clsfbay9pwbr.us-east-1.rds.amazonaws.com}"   # Reemplazar con IP de EC2
+EC2_HOST="${EC2_HOST:-}"   # IP pública o dominio del EC2 (ej. 54.123.45.67 o gamarra360.duckdns.org)
 EC2_USER="${EC2_USER:-ubuntu}"
 EC2_KEY="${EC2_KEY:-~/.ssh/gamarra360.pem}"
 APP_PORT="${APP_PORT:-8080}"
@@ -30,6 +30,7 @@ warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 # ── Validaciones previas ───────────────────────────────────────────────────────
+[ -z "$EC2_HOST" ] && error "EC2_HOST no definido. Exporta la variable o edita el script."
 [ -f "$EC2_KEY" ] || error "Clave SSH no encontrada: $EC2_KEY"
 command -v mvn &>/dev/null || error "Maven no está instalado"
 command -v ssh &>/dev/null || error "SSH no está disponible"
