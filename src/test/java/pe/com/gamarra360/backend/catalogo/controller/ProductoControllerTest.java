@@ -108,4 +108,30 @@ class ProductoControllerTest {
                 .andExpect(result -> org.junit.jupiter.api.Assertions.assertTrue(
                         result.getResolvedException() instanceof RecursoNoEncontradoException));
     }
+
+    @Test
+    @DisplayName("GET /api/v1/productos/buscar - Debería retornar listado de productos que coinciden con la búsqueda (BUS-001)")
+    void buscarProductos_Success() throws Exception {
+        // GIVEN: El servicio retorna una lista conteniendo nuestro producto
+        when(service.buscarPorKeyword("polo", 6)).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/v1/productos/buscar")
+                .param("q", "polo")
+                .param("size", "6"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idProducto").value(1))
+                .andExpect(jsonPath("$[0].nombre").value("Polo Oversize"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/productos/buscar - Debería retornar lista vacía si no hay coincidencias (BUS-002)")
+    void buscarProductos_Empty() throws Exception {
+        when(service.buscarPorKeyword("inexistente", 6)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/productos/buscar")
+                .param("q", "inexistente")
+                .param("size", "6"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
 }

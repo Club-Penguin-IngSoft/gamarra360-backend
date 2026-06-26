@@ -13,10 +13,17 @@ import pe.com.gamarra360.backend.exception.GlobalExceptionHandler;
 import pe.com.gamarra360.backend.security.CustomUserDetailsService;
 import pe.com.gamarra360.backend.security.JwtService;
 
+import org.springframework.http.MediaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import pe.com.gamarra360.backend.admin.dto.RespuestaAprobacionDTO;
+import pe.com.gamarra360.backend.admin.dto.MotivoDTO;
+
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @WebMvcTest(controllers = {AdminVendorController.class, GlobalExceptionHandler.class})
 @AutoConfigureMockMvc(addFilters = false)
@@ -46,5 +53,33 @@ class AdminVendorControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(result -> org.junit.jupiter.api.Assertions.assertTrue(
                         result.getResolvedException() instanceof ComercianteNoEncontradoException));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/vendedores/{id}/aprobar - Debería aprobar la solicitud del comerciante (ADM-001)")
+    void aprobarVendedor_Success() throws Exception {
+        RespuestaAprobacionDTO response = new RespuestaAprobacionDTO(1, "APROBADO", "Comerciante aprobado correctamente");
+        when(adminVendorService.aprobarVendedor(1)).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/admin/vendedores/1/aprobar"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comercianteId").value(1))
+                .andExpect(jsonPath("$.nuevoEstado").value("APROBADO"))
+                .andExpect(jsonPath("$.mensaje").value("Comerciante aprobado correctamente"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/vendedores/{id}/rechazar - Debería rechazar la solicitud del comerciante (ADM-002)")
+    void rechazarVendedor_Success() throws Exception {
+        MotivoDTO motivo = new MotivoDTO("Documento RUC no coincide");
+        RespuestaAprobacionDTO response = new RespuestaAprobacionDTO(1, "RECHAZADO", "Comerciante rechazado correctamente");
+        when(adminVendorService.rechazarVendedor(1, "Documento RUC no coincide")).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/admin/vendedores/1/rechazar")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(motivo)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comercianteId").value(1))
+                .andExpect(jsonPath("$.nuevoEstado").value("RECHAZADO"));
     }
 }
