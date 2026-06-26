@@ -488,6 +488,14 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setIdComerciante(p.getTienda() != null ? p.getTienda().getIdComerciante() : null);
         r.setNombreTienda(nombreTienda);
 
+        Integer idComerciante = p.getTienda() != null ? p.getTienda().getIdComerciante() : null;
+        Boolean comercianteActivo = idComerciante != null
+                ? comercianteRepository.findById(idComerciante)
+                  .map(c -> c.getActivo())
+                  .orElse(true)
+                : true;
+        r.setComercianteActivo(comercianteActivo);
+
         if (p.getCategoria() != null) {
             r.setIdCategoria(p.getCategoria().getIdCategoria());
             r.setNombreCategoria(p.getCategoria().getNombreCategoria());
