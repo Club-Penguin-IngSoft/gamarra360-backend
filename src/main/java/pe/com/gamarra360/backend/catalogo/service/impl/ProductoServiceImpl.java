@@ -544,6 +544,12 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setColor(v.getColor() != null ? v.getColor().getNombre() : null);
             d.setColorHex(v.getColor() != null ? v.getColor().getCodHex() : null);
             d.setImagenUrl(v.getImagenUrl());
+            // Precio efectivo: usa precioAjustado de la variante si existe, si no precioBase.
+            // Aplica la misma lógica de oferta/volumen que el precioFinal del producto.
+            Double baseVariante = v.getPrecioAjustado() != null ? v.getPrecioAjustado() : p.getPrecioBase();
+            d.setPrecioEfectivo(esOfertaActiva(oferta)
+                    ? calcularPrecioConOferta(baseVariante, oferta)
+                    : calcularPrecioFinal(baseVariante, p.getDescuentosVolumen()));
             return d;
         }).collect(Collectors.toList()));
 
