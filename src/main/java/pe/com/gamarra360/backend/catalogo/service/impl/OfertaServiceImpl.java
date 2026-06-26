@@ -12,6 +12,7 @@ import pe.com.gamarra360.backend.catalogo.repository.OfertaRepository;
 import pe.com.gamarra360.backend.catalogo.repository.ProductoRepository;
 import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.catalogo.service.OfertaService;
+import pe.com.gamarra360.backend.enums.TipoDescuento;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
 
@@ -62,7 +63,7 @@ public class OfertaServiceImpl implements OfertaService {
         oferta = ofertaRepository.save(oferta);
         log.info("Oferta creada con id {} para tienda {}", oferta.getIdOferta(), idTienda);
 
-        asignarProductos(oferta, request.getIdsProductos(), idTienda);
+        asignarProductos(oferta, request, idTienda);
         return toResponseDto(oferta);
     }
 
@@ -80,7 +81,7 @@ public class OfertaServiceImpl implements OfertaService {
         log.info("Oferta {} actualizada para tienda {}", idOferta, idTienda);
 
         desasignarProductosActuales(idOferta);
-        asignarProductos(oferta, request.getIdsProductos(), idTienda);
+        asignarProductos(oferta, request, idTienda);
         return toResponseDto(oferta);
     }
 
@@ -132,14 +133,27 @@ public class OfertaServiceImpl implements OfertaService {
         }
     }
 
-    private void asignarProductos(Oferta oferta, List<Integer> idsProductos, Integer idTienda) {
+    private void asignarProductos(Oferta oferta, OfertaRequestDto req, Integer idTienda) {
+        List<Integer> idsProductos = req.getIdsProductos();
         if (idsProductos == null || idsProductos.isEmpty()) return;
         List<Producto> productos = productoRepository.findByIdProductoInAndIdTienda(idsProductos, idTienda);
         if (productos.size() != idsProductos.size()) {
             log.warn("Algunos productos no pertenecen a la tienda {} o no existen — se omiten", idTienda);
         }
+        validarDescuentoFijo(req, productos);
         productos.forEach(p -> p.setOferta(oferta));
         productoRepository.saveAll(productos);
+    }
+
+    private void validarDescuentoFijo(OfertaRequestDto req, List<Producto> productos) {
+        if (req.getTipoDescuento() != TipoDescuento.MONTO_FIJO) return;
+        for (Producto p : productos) {
+            if (p.getPrecioBase() != null && req.getValorDescuento() >= p.getPrecioBase()) {
+                throw new DatosInvalidosException(String.format(
+                        "El descuento fijo de S/ %.2f no puede ser mayor o igual al precio del producto '%s'.",
+                        req.getValorDescuento(), p.getNombre()));
+            }
+        }
     }
 
     private void desasignarProductosActuales(Integer idOferta) {

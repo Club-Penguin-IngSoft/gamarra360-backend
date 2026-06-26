@@ -488,6 +488,14 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setIdComerciante(p.getTienda() != null ? p.getTienda().getIdComerciante() : null);
         r.setNombreTienda(nombreTienda);
 
+        Integer idComerciante = p.getTienda() != null ? p.getTienda().getIdComerciante() : null;
+        Boolean comercianteActivo = idComerciante != null
+                ? comercianteRepository.findById(idComerciante)
+                  .map(c -> c.getActivo())
+                  .orElse(true)
+                : true;
+        r.setComercianteActivo(comercianteActivo);
+
         if (p.getCategoria() != null) {
             r.setIdCategoria(p.getCategoria().getIdCategoria());
             r.setNombreCategoria(p.getCategoria().getNombreCategoria());
@@ -536,6 +544,12 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setColor(v.getColor() != null ? v.getColor().getNombre() : null);
             d.setColorHex(v.getColor() != null ? v.getColor().getCodHex() : null);
             d.setImagenUrl(v.getImagenUrl());
+            // Precio efectivo: usa precioAjustado de la variante si existe, si no precioBase.
+            // Aplica la misma lógica de oferta/volumen que el precioFinal del producto.
+            Double baseVariante = v.getPrecioAjustado() != null ? v.getPrecioAjustado() : p.getPrecioBase();
+            d.setPrecioEfectivo(esOfertaActiva(oferta)
+                    ? calcularPrecioConOferta(baseVariante, oferta)
+                    : calcularPrecioFinal(baseVariante, p.getDescuentosVolumen()));
             return d;
         }).collect(Collectors.toList()));
 

@@ -16,6 +16,7 @@ public class ProductoResponse {
     private Double precioFinal;
     private Boolean esPersonalizable;
     private Boolean activo;
+    private Boolean comercianteActivo;
     private Integer idTienda;
     private Integer idComerciante;
     private String nombreTienda;
@@ -54,6 +55,8 @@ public class ProductoResponse {
         private String sku;
         private Integer stock;
         private Double precioAjustado;
+        /** Precio listo para mostrar: (precioAjustado ?? precioBase) con oferta/volumen aplicados. */
+        private Double precioEfectivo;
         private Boolean disponible;
         private Integer idTalla;
         private Integer idColor;

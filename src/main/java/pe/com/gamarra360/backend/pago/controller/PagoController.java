@@ -75,8 +75,7 @@ public class PagoController {
             @RequestBody PrepararCarritoRequest request) {
         log.info("POST /api/v1/pagos/preparar - clienteId: {}", request.getClienteId());
         try {
-            Long carritoPendienteId = stripePaymentService.prepararCarrito(request);
-            return ResponseEntity.ok(new PrepararCarritoResponse(carritoPendienteId));
+            return ResponseEntity.ok(stripePaymentService.prepararCarrito(request));
         } catch (Exception e) {
             log.error("Error preparando carrito: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
