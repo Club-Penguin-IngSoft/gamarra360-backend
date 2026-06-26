@@ -128,6 +128,10 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
         dto.setFoto(tienda.getFoto());
         dto.setVerificada(tienda.getVerificada());
 
+        Comerciante comerciante = comercianteRepository.findById(tienda.getIdComerciante())
+                .orElse(null);
+        dto.setComercianteActivo(comerciante != null ? comerciante.getActivo() : true);
+
         java.util.List<PerfilTiendaPublicaDto.ProductoResumenDto> productosActivos = tienda.getProductos()
             .stream()
             .filter(p -> p.getActivo() != null && p.getActivo())

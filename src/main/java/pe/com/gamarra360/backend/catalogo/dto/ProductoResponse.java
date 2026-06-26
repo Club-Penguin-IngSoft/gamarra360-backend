@@ -16,6 +16,7 @@ public class ProductoResponse {
     private Double precioFinal;
     private Boolean esPersonalizable;
     private Boolean activo;
+    private Boolean comercianteActivo;
     private Integer idTienda;
     private Integer idComerciante;
     private String nombreTienda;
