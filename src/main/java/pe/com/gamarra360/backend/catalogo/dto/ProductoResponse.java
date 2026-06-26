@@ -55,6 +55,8 @@ public class ProductoResponse {
         private String sku;
         private Integer stock;
         private Double precioAjustado;
+        /** Precio listo para mostrar: (precioAjustado ?? precioBase) con oferta/volumen aplicados. */
+        private Double precioEfectivo;
         private Boolean disponible;
         private Integer idTalla;
         private Integer idColor;

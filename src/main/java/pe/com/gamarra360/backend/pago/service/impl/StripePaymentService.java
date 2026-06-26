@@ -12,9 +12,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.com.gamarra360.backend.catalogo.entity.Oferta;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
 import pe.com.gamarra360.backend.catalogo.repository.VarianteProductoRepository;
 import pe.com.gamarra360.backend.enums.EstadoPago;
+import pe.com.gamarra360.backend.logistica.repository.DistritoEnvioRepository;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
 import pe.com.gamarra360.backend.enums.TipoEntrega;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
@@ -22,6 +24,7 @@ import pe.com.gamarra360.backend.pago.dto.CrearPagoStripeRequest;
 import pe.com.gamarra360.backend.pago.dto.CrearPagoStripeResponse;
 import pe.com.gamarra360.backend.pago.dto.GrupoTiendaDto;
 import pe.com.gamarra360.backend.pago.dto.PrepararCarritoRequest;
+import pe.com.gamarra360.backend.pago.dto.PrepararCarritoResponse;
 import pe.com.gamarra360.backend.pago.entity.CarritoPendiente;
 import pe.com.gamarra360.backend.pago.entity.OrdenPago;
 import pe.com.gamarra360.backend.pago.entity.Pago;
@@ -32,7 +35,6 @@ import pe.com.gamarra360.backend.pedido.entity.DetallePedido;
 import pe.com.gamarra360.backend.pedido.entity.Pedido;
 import pe.com.gamarra360.backend.pedido.repository.DetallePedidoRepository;
 import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
-import pe.com.gamarra360.backend.solicitud.entity.Cotizacion;
 import pe.com.gamarra360.backend.solicitud.repository.CotizacionRepository;
 import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 
@@ -52,6 +54,7 @@ public class StripePaymentService {
     private final DetallePedidoRepository    detallePedidoRepository;
     private final CarritoPendienteRepository carritoPendienteRepository;
     private final CotizacionRepository       cotizacionRepository;
+    private final DistritoEnvioRepository    distritoEnvioRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -59,22 +62,48 @@ public class StripePaymentService {
     private double commissionRate;
 
     @Transactional
-    public Long prepararCarrito(PrepararCarritoRequest request) {
+    public PrepararCarritoResponse prepararCarrito(PrepararCarritoRequest request) {
         try {
+            // Calcular costo de entrega real desde BD por cada grupo
+            double costoEntregaTotal = 0.0;
+            double subtotalItems = 0.0;
+
+            for (GrupoTiendaDto grupo : request.getGrupos()) {
+                for (GrupoTiendaDto.ItemCarritoDto item : grupo.getItems()) {
+                    int cantidad = item.getCantidad() != null ? item.getCantidad() : 0;
+                    if (item.getIdVarianteProducto() != null) {
+                        // Variante normal: precio calculado server-side desde BD
+                        subtotalItems += resolverPrecioVariante(item.getIdVarianteProducto()) * cantidad;
+                    } else {
+                        // Cotización / personalización: confiamos en el precio enviado por el frontend
+                        subtotalItems += (item.getPrecio() != null ? item.getPrecio() : 0.0) * cantidad;
+                    }
+                }
+
+                if ("DELIVERY".equals(grupo.getTipoEntrega()) && grupo.getIdDistrito() != null) {
+                    var distrito = distritoEnvioRepository.findById(grupo.getIdDistrito()).orElse(null);
+                    if (distrito != null && distrito.getCostoEnvio() != null) {
+                        costoEntregaTotal += distrito.getCostoEnvio();
+                    }
+                }
+                // RECOJO_TIENDA → costoEnvio = 0 (no suma)
+            }
+
+            double totalReal = subtotalItems + costoEntregaTotal;
             String json = objectMapper.writeValueAsString(request.getGrupos());
 
             CarritoPendiente carrito = new CarritoPendiente();
             carrito.setClienteId(request.getClienteId());
             carrito.setDatosJson(json);
-            carrito.setTotal(request.getTotal());
+            carrito.setTotal(totalReal);
 
             carrito = carritoPendienteRepository.save(carrito);
-            log.info("CarritoPendiente {} creado para cliente {} — total S/ {}",
-                    carrito.getId(), request.getClienteId(), request.getTotal());
+            log.info("CarritoPendiente {} — cliente={}, items=S/{}, entrega=S/{}, total=S/{}",
+                    carrito.getId(), request.getClienteId(), subtotalItems, costoEntregaTotal, totalReal);
 
-            return carrito.getId();
+            return new PrepararCarritoResponse(carrito.getId(), subtotalItems, costoEntregaTotal, totalReal);
         } catch (Exception e) {
-            log.error("Error serializando carrito pendiente: {}", e.getMessage(), e);
+            log.error("Error preparando carrito: {}", e.getMessage(), e);
             throw new IllegalStateException("No se pudo preparar el carrito.", e);
         }
     }
@@ -111,16 +140,20 @@ public class StripePaymentService {
                 .build();
 
         PaymentIntent intent = PaymentIntent.create(params, options);
-        log.info("PaymentIntent creado: {} para CarritoPendiente: {} — S/ {}",
+        log.info("PaymentIntent creado/recuperado: {} para CarritoPendiente: {} — S/ {}",
                 intent.getId(), carrito.getId(), total);
 
-        Pago pago = new Pago();
-        pago.setMonto(total);
-        pago.setMetodo("STRIPE");
-        pago.setStripePaymentIntentId(intent.getId());
-        pago.setStripeClientSecret(intent.getClientSecret());
-        pago.setEstado(EstadoPago.PENDIENTE);
-        pagoRepository.save(pago);
+        // Si ya existe un Pago para este PaymentIntent (reintento/recarga), lo reutilizamos.
+        Pago pago = pagoRepository.findByStripePaymentIntentId(intent.getId())
+                .orElseGet(() -> {
+                    Pago nuevo = new Pago();
+                    nuevo.setMonto(total);
+                    nuevo.setMetodo("STRIPE");
+                    nuevo.setStripePaymentIntentId(intent.getId());
+                    nuevo.setStripeClientSecret(intent.getClientSecret());
+                    nuevo.setEstado(EstadoPago.PENDIENTE);
+                    return pagoRepository.save(nuevo);
+                });
 
         return new CrearPagoStripeResponse(
                 pago.getId(),
@@ -333,5 +366,32 @@ public class StripePaymentService {
             log.error("Error limpiando BD tras stock insuficiente en pedido {}: {}",
                     pedido.getId(), e.getMessage());
         }
+    }
+
+    private Double resolverPrecioVariante(Integer idVariante) {
+        return varianteProductoRepository.findById(idVariante)
+                .map(v -> {
+                    var producto = v.getProducto();
+                    Double base = v.getPrecioAjustado() != null
+                            ? v.getPrecioAjustado()
+                            : (producto != null ? producto.getPrecioBase() : null);
+                    if (base == null) return 0.0;
+                    Oferta oferta = producto != null ? producto.getOferta() : null;
+                    return esOfertaActiva(oferta) ? aplicarOferta(base, oferta) : base;
+                })
+                .orElse(0.0);
+    }
+
+    private boolean esOfertaActiva(Oferta oferta) {
+        if (oferta == null || !Boolean.TRUE.equals(oferta.getActiva())) return false;
+        LocalDateTime now = LocalDateTime.now();
+        return !now.isBefore(oferta.getFechaInicio()) && !now.isAfter(oferta.getFechaFin());
+    }
+
+    private double aplicarOferta(double base, Oferta oferta) {
+        return switch (oferta.getTipoDescuento()) {
+            case PORCENTAJE -> base * (1 - oferta.getValorDescuento() / 100.0);
+            case MONTO_FIJO -> Math.max(0.0, base - oferta.getValorDescuento());
+        };
     }
 }

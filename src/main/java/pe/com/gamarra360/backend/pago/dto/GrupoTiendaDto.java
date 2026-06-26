@@ -13,6 +13,8 @@ public class GrupoTiendaDto {
     private Integer vendedorId;
     private String tipoEntrega; // "DELIVERY" | "RECOJO_TIENDA"
     private String direccionEntrega;
+    /** Distrito seleccionado por el cliente; requerido cuando tipoEntrega = DELIVERY. */
+    private Integer idDistrito;
     private Double total;
     private List<ItemCarritoDto> items;
 
@@ -26,6 +28,9 @@ public class GrupoTiendaDto {
 
     public String getDireccionEntrega() { return direccionEntrega; }
     public void setDireccionEntrega(String direccionEntrega) { this.direccionEntrega = direccionEntrega; }
+
+    public Integer getIdDistrito() { return idDistrito; }
+    public void setIdDistrito(Integer idDistrito) { this.idDistrito = idDistrito; }
 
     public Double getTotal() { return total; }
     public void setTotal(Double total) { this.total = total; }

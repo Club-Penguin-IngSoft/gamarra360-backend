@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.com.gamarra360.backend.catalogo.entity.Oferta;
+import pe.com.gamarra360.backend.catalogo.repository.VarianteProductoRepository;
 import pe.com.gamarra360.backend.enums.TipoEntrega;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
@@ -19,6 +21,9 @@ import pe.com.gamarra360.backend.pedido.repository.DetallePedidoRepository;
 import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Orquesta la creación de OrdenPago → Pedido → DetallePedido en una sola
@@ -40,13 +45,18 @@ public class CheckoutService {
     private final PedidoRepository pedidoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
     private final DistritoEnvioRepository distritoEnvioRepository;
+    private final VarianteProductoRepository varianteRepository;
 
     @Transactional
     public PedidoResponseDTO procesarCompra(PedidoRequestDTO dto, Integer clienteId) {
 
-        // ── 1. Calcular subtotal desde los ítems (no confiar en dto.total()) ──
+        // ── 1. Resolver precio real por variante desde BD (no confiar en dto.precio()) ──
+        final Map<Integer, Double> preciosVariante = new HashMap<>();
+        dto.items().forEach(item ->
+                preciosVariante.computeIfAbsent(item.idVarianteProducto(), this::resolverPrecioVariante));
+
         double subtotal = dto.items().stream()
-                .mapToDouble(i -> i.precio() * i.cantidad())
+                .mapToDouble(i -> preciosVariante.get(i.idVarianteProducto()) * i.cantidad())
                 .sum();
 
         // ── 2. Resolver logística según tipo de entrega ───────────────────
@@ -109,7 +119,7 @@ public class CheckoutService {
             detalle.setPedidoId(pedidoId);
             detalle.setIdVarianteProducto(item.idVarianteProducto());
             detalle.setCantidad(item.cantidad());
-            detalle.setPrecio(item.precio());
+            detalle.setPrecio(preciosVariante.get(item.idVarianteProducto()));
             detallePedidoRepository.save(detalle);
         });
         log.info("Pedido #{} — {} detalles guardados", pedidoId, dto.items().size());
@@ -126,5 +136,37 @@ public class CheckoutService {
                 distrito != null ? distrito.getCiudad() : null,
                 fechaEntregaEstimada.toString()
         );
+    }
+
+    /**
+     * Resuelve el precio real de una variante desde BD:
+     * usa precioAjustado si existe, si no precioBase del producto.
+     * Aplica la oferta activa si la hay.
+     */
+    private Double resolverPrecioVariante(Integer idVariante) {
+        return varianteRepository.findById(idVariante)
+                .map(v -> {
+                    var producto = v.getProducto();
+                    Double base = v.getPrecioAjustado() != null
+                            ? v.getPrecioAjustado()
+                            : (producto != null ? producto.getPrecioBase() : null);
+                    if (base == null) return 0.0;
+                    Oferta oferta = producto != null ? producto.getOferta() : null;
+                    return esOfertaActiva(oferta) ? aplicarOferta(base, oferta) : base;
+                })
+                .orElse(0.0);
+    }
+
+    private boolean esOfertaActiva(Oferta oferta) {
+        if (oferta == null || !Boolean.TRUE.equals(oferta.getActiva())) return false;
+        LocalDateTime now = LocalDateTime.now();
+        return !now.isBefore(oferta.getFechaInicio()) && !now.isAfter(oferta.getFechaFin());
+    }
+
+    private double aplicarOferta(double base, Oferta oferta) {
+        return switch (oferta.getTipoDescuento()) {
+            case PORCENTAJE -> base * (1 - oferta.getValorDescuento() / 100.0);
+            case MONTO_FIJO -> Math.max(0.0, base - oferta.getValorDescuento());
+        };
     }
 }
