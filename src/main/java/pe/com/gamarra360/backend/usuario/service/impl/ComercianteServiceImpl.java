@@ -54,14 +54,28 @@ public class ComercianteServiceImpl extends AbstractCrudService<Comerciante, Int
         comerciante.setAprobado(true);
         comercianteRepository.save(comerciante);
 
-        Tienda tienda = new Tienda();
-        tienda.setIdComerciante(comerciante.getUsuarioId());
-        tienda.setNombreComercial(
-                comerciante.getNombreTienda() != null
-                        ? comerciante.getNombreTienda()
-                        : comerciante.getRazonSocial());
-        tienda.setVerificada(false);
-        Tienda tiendaGuardada = tiendaRepository.save(tienda);
+        // La Tienda fue creada en el registro; aquí solo la actualizamos si ya existe,
+        // o la creamos como fallback para comerciantes registrados antes de este cambio.
+        tiendaRepository.findByIdComerciante(comerciante.getUsuarioId()).ifPresentOrElse(
+                tienda -> {
+                    // ya existe: solo marcar como no-verificada (el admin la verificará después)
+                    if (tienda.getNombreComercial() == null) {
+                        tienda.setNombreComercial(comerciante.getNombreTienda() != null
+                                ? comerciante.getNombreTienda()
+                                : comerciante.getRazonSocial());
+                        tiendaRepository.save(tienda);
+                    }
+                },
+                () -> {
+                    Tienda tienda = new Tienda();
+                    tienda.setIdComerciante(comerciante.getUsuarioId());
+                    tienda.setNombreComercial(comerciante.getNombreTienda() != null
+                            ? comerciante.getNombreTienda()
+                            : comerciante.getRazonSocial());
+                    tienda.setVerificada(false);
+                    tiendaRepository.save(tienda);
+                }
+        );
 
         return obtener(id);
     }
@@ -91,6 +105,7 @@ public class ComercianteServiceImpl extends AbstractCrudService<Comerciante, Int
         dto.setRazonSocial(c.getRazonSocial());
         dto.setRuc(c.getRuc());
         dto.setLogoUrl(c.getLogoUrl());
+        dto.setVerificada(Boolean.TRUE.equals(c.getVerificado()));
         if (tienda != null) {
             dto.setNombreTienda(tienda.getNombreComercial());
             dto.setInformacion(tienda.getInformacion());
