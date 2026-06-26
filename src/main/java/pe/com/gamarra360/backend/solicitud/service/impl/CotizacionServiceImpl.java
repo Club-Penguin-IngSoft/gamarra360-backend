@@ -22,7 +22,6 @@ import pe.com.gamarra360.backend.usuario.entity.Cliente;
 import pe.com.gamarra360.backend.usuario.repository.ClienteRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Slf4j
@@ -283,7 +282,7 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         Cliente cliente = c.getClienteId() != null
                 ? clienteRepository.findById(c.getClienteId()).orElse(null) : null;
         String nombreCliente = cliente != null
-                ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null;
+                ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null;
 
         String pedidoEstado = null;
         if (c.getPedidoId() != null) {
@@ -317,7 +316,7 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         Cliente cliente = c.getClienteId() != null
                 ? clienteRepository.findById(c.getClienteId()).orElse(null) : null;
         String nombreCliente = cliente != null
-                ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null;
+                ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null;
 
         RespuestaSolicitud respuesta = respuestaSolicitudRepository.findByIdSolicitud(c.getId()).orElse(null);
         CotizacionDetalleResponse.RespuestaInfo respuestaInfo = toRespuestaInfo(respuesta);

@@ -1,18 +1,20 @@
 package pe.com.gamarra360.backend.pedido.controller;
 
 import lombok.extern.slf4j.Slf4j;
-
-import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteDetalle;
-import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteResumen;
-import pe.com.gamarra360.backend.pedido.entity.Pedido;
-import pe.com.gamarra360.backend.pedido.service.PedidoService;
-import pe.com.gamarra360.backend.security.UsuarioPrincipal;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO;
+import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteDetalle;
+import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteResumen;
+import pe.com.gamarra360.backend.pedido.entity.Pedido;
+import pe.com.gamarra360.backend.pedido.service.PedidoService;
+import pe.com.gamarra360.backend.security.UsuarioPrincipal;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -88,5 +90,20 @@ public class PedidoController {
         Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("GET /api/v1/pedidos/{}/comerciante-detalle — vendedorId={}", id, vendedorId);
         return ResponseEntity.ok(service.obtenerDetalleComerciante(id, vendedorId));
+    }
+
+    /**
+     * Dashboard del comerciante: métricas filtradas por rango de fechas.
+     * GET /api/v1/pedidos/comerciante/dashboard?desde=2024-01-01&hasta=2024-01-31
+     */
+    @GetMapping("/comerciante/dashboard")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<DashboardResumenDTO> dashboard(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            Authentication auth) {
+        Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("GET /api/v1/pedidos/comerciante/dashboard — vendedorId={}, desde={}, hasta={}", vendedorId, desde, hasta);
+        return ResponseEntity.ok(service.obtenerDashboard(vendedorId, desde, hasta));
     }
 }

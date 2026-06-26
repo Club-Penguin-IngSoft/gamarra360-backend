@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/s3/upload").permitAll()  // logo en registro de comerciante
                         .requestMatchers(HttpMethod.GET, "/api/v1/productos", "/api/v1/productos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/materiales", "/api/v1/materiales/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/distritos", "/api/v1/distritos/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->

@@ -1,11 +1,17 @@
 package pe.com.gamarra360.backend.pedido.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
-
+import org.slf4j.Logger;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pe.com.gamarra360.backend.catalogo.entity.Producto;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
 import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
+import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO;
+import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO.PedidoPorDia;
+import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO.ProductoTop;
 import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteDetalle;
 import pe.com.gamarra360.backend.pedido.dto.PedidoComercianteResumen;
 import pe.com.gamarra360.backend.pedido.entity.DetallePedido;
@@ -20,12 +26,15 @@ import pe.com.gamarra360.backend.solicitud.repository.PersonalizacionRepository;
 import pe.com.gamarra360.backend.solicitud.service.CotizacionService;
 import pe.com.gamarra360.backend.usuario.entity.Cliente;
 import pe.com.gamarra360.backend.usuario.repository.ClienteRepository;
-import org.slf4j.Logger;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -119,6 +128,112 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
         return toDetalle(pedido, vendedorId);
     }
 
+    /* ── Dashboard ────────────────────────────────────────────────────────── */
+
+    @Override
+    @Transactional(readOnly = true)
+    public DashboardResumenDTO obtenerDashboard(Integer vendedorId, LocalDate desde, LocalDate hasta) {
+        LocalDateTime desdeTs = desde.atStartOfDay();
+        LocalDateTime hastaTs = hasta.plusDays(1).atStartOfDay();
+
+        List<Pedido> pedidos = pedidoRepository
+                .findByVendedorIdAndFechaBetweenOrderByFechaDesc(vendedorId, desdeTs, hastaTs);
+
+        // 1. Pedidos por día
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        Map<String, Integer> porDiaMap = new LinkedHashMap<>();
+        // Inicializar todos los días del rango a 0
+        LocalDate cursor = desde;
+        while (!cursor.isAfter(hasta)) {
+            porDiaMap.put(cursor.format(fmt), 0);
+            cursor = cursor.plusDays(1);
+        }
+        for (Pedido p : pedidos) {
+            if (p.getFecha() != null) {
+                String dia = p.getFecha().toLocalDate().format(fmt);
+                porDiaMap.merge(dia, 1, Integer::sum);
+            }
+        }
+        List<PedidoPorDia> pedidosPorDia = porDiaMap.entrySet().stream()
+                .map(e -> new PedidoPorDia(e.getKey(), e.getValue()))
+                .toList();
+
+        // 2. Pedidos recientes (últimos 5)
+        List<PedidoComercianteResumen> pedidosRecientes = pedidos.stream()
+                .limit(5)
+                .map(this::toResumen)
+                .toList();
+
+        // 3. Pedidos completados (estado ENTREGADO)
+        List<PedidoComercianteResumen> pedidosCompletados = pedidos.stream()
+                .filter(p -> p.getEstado() == EstadoPedido.RECIBIDO)
+                .map(this::toResumen)
+                .toList();
+
+        // 4. Top 5 productos más solicitados y todos los productos ordenados
+        List<Long> pedidoIds = pedidos.stream().map(Pedido::getId).toList();
+        List<ProductoTop> topProductos = new ArrayList<>();
+        List<ProductoTop> todosProductos = new ArrayList<>();
+        if (!pedidoIds.isEmpty()) {
+            List<DetallePedido> detalles = detallePedidoRepository
+                    .findByVendedorPedidos(vendedorId, pedidoIds);
+
+            // agrupar por producto
+            Map<Integer, int[]> porProducto = new LinkedHashMap<>();
+            Map<Integer, String> nombres = new LinkedHashMap<>();
+            Map<Integer, String> imagenes = new LinkedHashMap<>();
+
+            for (DetallePedido dp : detalles) {
+                VarianteProducto v = dp.getVarianteProducto();
+                if (v == null || v.getProducto() == null) continue;
+                Producto prod = v.getProducto();
+                Integer idProd = prod.getIdProducto();
+                porProducto.computeIfAbsent(idProd, k -> new int[]{0})[0] += (dp.getCantidad() != null ? dp.getCantidad() : 0);
+                nombres.putIfAbsent(idProd, prod.getNombre());
+                imagenes.putIfAbsent(idProd, imagenPrincipal(prod));
+            }
+
+            // Ordenar todos los productos
+            var productosOrdenados = porProducto.entrySet().stream()
+                    .sorted((a, b) -> b.getValue()[0] - a.getValue()[0])
+                    .map(e -> new ProductoTop(
+                            e.getKey(),
+                            nombres.get(e.getKey()),
+                            imagenes.get(e.getKey()),
+                            e.getValue()[0]
+                    ))
+                    .collect(Collectors.toList());
+
+            // Top 5 para la vista principal
+            topProductos = productosOrdenados.stream()
+                    .limit(5)
+                    .collect(Collectors.toList());
+
+            // Todos los productos para la pestaña
+            todosProductos = productosOrdenados;
+        }
+
+        // 5. Total unidades y total ingresos
+        int totalUnidades = pedidoIds.isEmpty() ? 0 :
+                detallePedidoRepository.findByVendedorPedidos(vendedorId, pedidoIds)
+                        .stream().mapToInt(dp -> dp.getCantidad() != null ? dp.getCantidad() : 0).sum();
+
+        double totalIngresos = pedidos.stream()
+                //.filter(p -> p.getEstado() == EstadoPedido.ENTREGADO)
+                .mapToDouble(p -> p.getTotal() != null ? p.getTotal() : 0.0)
+                .sum();
+
+        return new DashboardResumenDTO(
+                pedidosPorDia,
+                topProductos,
+                todosProductos,
+                pedidosRecientes,
+                pedidosCompletados,
+                totalUnidades,
+                totalIngresos
+        );
+    }
+
     /* ── Helpers privados ────────────────────────────────────────────────── */
 
     private PedidoComercianteResumen toResumen(Pedido p) {
@@ -131,7 +246,7 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
                 p.getEstado() != null ? p.getEstado().name() : null,
                 p.getTotal(),
                 p.getClienteId(),
-                cliente != null ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null,
+                cliente != null ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null,
                 cliente != null ? cliente.getEmail() : null
         );
     }
@@ -164,7 +279,7 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
                 p.getTipoEntrega() != null ? p.getTipoEntrega().name() : null,
                 p.getDireccionEntrega(),
                 p.getClienteId(),
-                cliente != null ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null,
+                cliente != null ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null,
                 cliente != null ? cliente.getEmail() : null,
                 items,
                 historial

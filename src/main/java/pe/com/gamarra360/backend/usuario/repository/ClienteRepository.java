@@ -11,11 +11,9 @@ public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
 
     @Modifying
     @Transactional
-    @Query("UPDATE Cliente c SET c.nombre = :nombre, c.apellido = :apellido, c.direccionEntrega = :direccionEntrega WHERE c.usuarioId = :id")
+    @Query("UPDATE Cliente c SET c.direccionEntrega = :direccionEntrega WHERE c.usuarioId = :id")
     void actualizarPerfil(
             @Param("id") Integer id,
-            @Param("nombre") String nombre,
-            @Param("apellido") String apellido,
             @Param("direccionEntrega") String direccionEntrega
     );
 }
