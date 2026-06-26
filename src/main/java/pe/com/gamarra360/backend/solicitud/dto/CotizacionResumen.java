@@ -19,4 +19,6 @@ public class CotizacionResumen {
     private Integer cantidadProductos;
     private Double precioPropuesto;
     private String nombreCliente;
+    private Long pedidoId;
+    private String pedidoEstado;
 }

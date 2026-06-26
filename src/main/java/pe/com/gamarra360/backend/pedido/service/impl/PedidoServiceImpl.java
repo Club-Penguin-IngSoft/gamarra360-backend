@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.com.gamarra360.backend.catalogo.entity.Producto;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
+import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
 import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO;
 import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO.PedidoPorDia;
 import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO.ProductoTop;
@@ -19,8 +20,10 @@ import pe.com.gamarra360.backend.pedido.repository.DetallePedidoRepository;
 import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
 import pe.com.gamarra360.backend.pedido.service.PedidoService;
 import pe.com.gamarra360.backend.service.AbstractCrudService;
+import pe.com.gamarra360.backend.solicitud.dto.ResumenItemCotizacion;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
 import pe.com.gamarra360.backend.solicitud.repository.PersonalizacionRepository;
+import pe.com.gamarra360.backend.solicitud.service.CotizacionService;
 import pe.com.gamarra360.backend.usuario.entity.Cliente;
 import pe.com.gamarra360.backend.usuario.repository.ClienteRepository;
 
@@ -41,16 +44,19 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
     private final DetallePedidoRepository detallePedidoRepository;
     private final ClienteRepository clienteRepository;
     private final PersonalizacionRepository personalizacionRepository;
+    private final CotizacionService cotizacionService;
 
     public PedidoServiceImpl(PedidoRepository pedidoRepository,
-                             DetallePedidoRepository detallePedidoRepository,
-                             ClienteRepository clienteRepository,
-                             PersonalizacionRepository personalizacionRepository) {
+                              DetallePedidoRepository detallePedidoRepository,
+                              ClienteRepository clienteRepository,
+                              PersonalizacionRepository personalizacionRepository,
+                              CotizacionService cotizacionService) {
         super(pedidoRepository, "Pedido");
         this.pedidoRepository = pedidoRepository;
         this.detallePedidoRepository = detallePedidoRepository;
         this.clienteRepository = clienteRepository;
         this.personalizacionRepository = personalizacionRepository;
+        this.cotizacionService = cotizacionService;
     }
 
     @Override
@@ -72,6 +78,33 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
         }
         pedido.cambiarEstado(EstadoPedido.CANCELADO);
         actualizar(id, pedido);
+    }
+
+    /* ── Comerciante: avanzar estado del pedido ─────────────────────────── */
+
+    private static final java.util.Map<EstadoPedido, EstadoPedido> SIGUIENTE_ESTADO = java.util.Map.of(
+            EstadoPedido.RECIBIDO,            EstadoPedido.EN_PREPARACION,
+            EstadoPedido.EN_PREPARACION,      EstadoPedido.EN_CAMINO,
+            EstadoPedido.EN_CAMINO,           EstadoPedido.LISTO_PARA_ENTREGA,
+            EstadoPedido.LISTO_PARA_ENTREGA,  EstadoPedido.ENTREGADO
+    );
+
+    @Override
+    @Transactional
+    public Pedido avanzarEstado(Long id, Integer vendedorId) {
+        log.info("Avanzando estado del pedido {} — vendedorId={}", id, vendedorId);
+        Pedido pedido = obtener(id);
+        if (!vendedorId.equals(pedido.getVendedorId())) {
+            throw new AccessDeniedException("El pedido no pertenece al comerciante autenticado.");
+        }
+        EstadoPedido siguiente = SIGUIENTE_ESTADO.get(pedido.getEstado());
+        if (siguiente == null) {
+            throw new ConflictoNegocioException("El pedido ya está en estado final: " + pedido.getEstado());
+        }
+        pedido.cambiarEstado(siguiente);
+        actualizar(id, pedido);
+        log.info("Pedido {} avanzó a {}", id, siguiente);
+        return pedido;
     }
 
     /* ── Comerciante: listar pedidos ─────────────────────────────────────── */
@@ -268,6 +301,16 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
             talla = v.getTalla() != null ? v.getTalla().getTalla() : null;
             color = v.getColor() != null ? v.getColor().getNombre() : null;
             sku = v.getSku();
+        }
+
+        // Ítems provenientes de una cotización no tienen variante: tomamos nombre
+        // e imagen del producto original de la cotización.
+        if (nombreProducto == null && dp.getCotizacionId() != null) {
+            ResumenItemCotizacion resumen = cotizacionService.obtenerResumenItem(dp.getCotizacionId());
+            if (resumen != null) {
+                nombreProducto = resumen.nombre();
+                if (imagenUrl == null) imagenUrl = resumen.imagenUrl();
+            }
         }
 
         PedidoComercianteDetalle.PersonalizacionInfo personalizacion = null;

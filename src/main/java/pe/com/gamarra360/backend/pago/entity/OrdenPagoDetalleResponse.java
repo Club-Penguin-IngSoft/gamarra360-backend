@@ -34,6 +34,8 @@ public record OrdenPagoDetalleResponse(
             String color,
             String sku,
             Integer cantidad,
-            Double precio
+            Double precio,
+            Long cotizacionId,
+            Long personalizacionId
     ) {}
 }

@@ -16,6 +16,8 @@ import pe.com.gamarra360.backend.pedido.repository.DetallePedidoRepository;
 import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
 import pe.com.gamarra360.backend.service.AbstractCrudService;
+import pe.com.gamarra360.backend.solicitud.dto.ResumenItemCotizacion;
+import pe.com.gamarra360.backend.solicitud.service.CotizacionService;
 import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
@@ -33,18 +35,21 @@ public class OrdenPagoServiceImpl extends AbstractCrudService<OrdenPago, Long> i
     private final DetallePedidoRepository detallePedidoRepository;
     private final ComercianteRepository comercianteRepository;
     private final PagoRepository pagoRepository;
+    private final CotizacionService cotizacionService;
 
     public OrdenPagoServiceImpl(OrdenPagoRepository ordenPagoRepository,
                                 PedidoRepository pedidoRepository,
                                 DetallePedidoRepository detallePedidoRepository,
                                 ComercianteRepository comercianteRepository,
-                                PagoRepository pagoRepository) {
+                                PagoRepository pagoRepository,
+                                CotizacionService cotizacionService) {
         super(ordenPagoRepository, "OrdenPago");
         this.ordenPagoRepository = ordenPagoRepository;
         this.pedidoRepository = pedidoRepository;
         this.detallePedidoRepository = detallePedidoRepository;
         this.comercianteRepository = comercianteRepository;
         this.pagoRepository = pagoRepository;
+        this.cotizacionService = cotizacionService;
     }
 
     @Override
@@ -133,17 +138,37 @@ public class OrdenPagoServiceImpl extends AbstractCrudService<OrdenPago, Long> i
                     .map(i -> i.getUrl())
                     .orElse(null);
         }
+
+        String nombreProducto = v != null && v.getProducto() != null ? v.getProducto().getNombre() : null;
+        if (nombreProducto == null) {
+            if (dp.getCotizacionId() != null) {
+                // El DetallePedido de una cotización no tiene variante: tomamos
+                // nombre e imagen del producto original de la cotización.
+                ResumenItemCotizacion resumen = cotizacionService.obtenerResumenItem(dp.getCotizacionId());
+                if (resumen != null) {
+                    nombreProducto = resumen.nombre();
+                    if (imagenUrl == null) imagenUrl = resumen.imagenUrl();
+                } else {
+                    nombreProducto = "Cotización #" + dp.getCotizacionId();
+                }
+            } else if (dp.getPersonalizacionId() != null) {
+                nombreProducto = "Personalización #" + dp.getPersonalizacionId();
+            }
+        }
+
         return new OrdenPagoDetalleResponse.DetalleResumen(
                 dp.getId(),
                 dp.getIdVarianteProducto(),
                 v != null && v.getProducto() != null ? v.getProducto().getIdProducto() : null,
-                v != null && v.getProducto() != null ? v.getProducto().getNombre() : null,
+                nombreProducto,
                 imagenUrl,
                 v != null && v.getTalla() != null ? v.getTalla().getTalla() : null,
                 v != null && v.getColor() != null ? v.getColor().getNombre() : null,
                 v != null ? v.getSku() : null,
                 dp.getCantidad(),
-                dp.getPrecio()
+                dp.getPrecio(),
+                dp.getCotizacionId(),
+                dp.getPersonalizacionId()
         );
     }
 }

@@ -13,6 +13,7 @@ import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.enums.EstadoSolicitud;
 import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
+import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
 import pe.com.gamarra360.backend.service.AbstractCrudService;
 import pe.com.gamarra360.backend.solicitud.dto.*;
 import pe.com.gamarra360.backend.solicitud.entity.*;
@@ -34,6 +35,7 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
     private final ProductoCotizadoManualRepository productoCotizadoManualRepository;
     private final RespuestaSolicitudRepository respuestaSolicitudRepository;
     private final ClienteRepository clienteRepository;
+    private final PedidoRepository pedidoRepository;
 
     public CotizacionServiceImpl(CotizacionRepository cotizacionRepository,
                                   TiendaRepository tiendaRepository,
@@ -41,7 +43,8 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                                   CotizacionCatalogoRepository cotizacionCatalogoRepository,
                                   ProductoCotizadoManualRepository productoCotizadoManualRepository,
                                   RespuestaSolicitudRepository respuestaSolicitudRepository,
-                                  ClienteRepository clienteRepository) {
+                                  ClienteRepository clienteRepository,
+                                  PedidoRepository pedidoRepository) {
         super(cotizacionRepository, "Cotizacion");
         this.cotizacionRepository = cotizacionRepository;
         this.tiendaRepository = tiendaRepository;
@@ -50,6 +53,7 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         this.productoCotizadoManualRepository = productoCotizadoManualRepository;
         this.respuestaSolicitudRepository = respuestaSolicitudRepository;
         this.clienteRepository = clienteRepository;
+        this.pedidoRepository = pedidoRepository;
     }
 
     @Override
@@ -238,6 +242,26 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         log.info("Cotización {} cancelada por vendedor {}", id, vendedorId);
     }
 
+    /* ── Resumen del ítem para pedidos derivados ─────────────────────────── */
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResumenItemCotizacion obtenerResumenItem(Long cotizacionId) {
+        List<DetalleCotizacion> detalles = detalleCotizacionRepository.findByIdCotizacion(cotizacionId);
+        if (detalles.isEmpty()) return null;
+
+        DetalleCotizacion primero = detalles.stream()
+                .min(java.util.Comparator.comparing(DetalleCotizacion::getDetalleCotizacionId))
+                .orElse(detalles.get(0));
+
+        CotizacionDetalleResponse.ProductoDetalleInfo info = toProductoInfo(primero);
+        String nombre = info.getNombre() != null ? info.getNombre() : "Cotización #" + cotizacionId;
+        if (detalles.size() > 1) {
+            nombre = nombre + " (+" + (detalles.size() - 1) + " más)";
+        }
+        return new ResumenItemCotizacion(nombre, info.getImagenUrl());
+    }
+
     /* ── Helpers privados ────────────────────────────────────────────────── */
 
     private Cotizacion obtenerYValidarCliente(Long id, Integer clienteId) {
@@ -260,6 +284,13 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         String nombreCliente = cliente != null
                 ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null;
 
+        String pedidoEstado = null;
+        if (c.getPedidoId() != null) {
+            pedidoEstado = pedidoRepository.findById(c.getPedidoId())
+                    .map(p -> p.getEstado() != null ? p.getEstado().name() : null)
+                    .orElse(null);
+        }
+
         return new CotizacionResumen(
                 c.getId(),
                 c.getEstado() != null ? c.getEstado().name() : null,
@@ -269,7 +300,9 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                 tienda != null ? tienda.getFoto() : null,
                 cantidad,
                 precio,
-                nombreCliente
+                nombreCliente,
+                c.getPedidoId(),
+                pedidoEstado
         );
     }
 
@@ -288,6 +321,13 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         RespuestaSolicitud respuesta = respuestaSolicitudRepository.findByIdSolicitud(c.getId()).orElse(null);
         CotizacionDetalleResponse.RespuestaInfo respuestaInfo = toRespuestaInfo(respuesta);
 
+        String pedidoEstado = null;
+        if (c.getPedidoId() != null) {
+            pedidoEstado = pedidoRepository.findById(c.getPedidoId())
+                    .map(p -> p.getEstado() != null ? p.getEstado().name() : null)
+                    .orElse(null);
+        }
+
         return new CotizacionDetalleResponse(
                 c.getId(),
                 c.getEstado() != null ? c.getEstado().name() : null,
@@ -300,7 +340,8 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                 productos,
                 respuestaInfo,
                 c.getPrecioDeseado(),
-                c.getPedidoId()
+                c.getPedidoId(),
+                pedidoEstado
         );
     }
 

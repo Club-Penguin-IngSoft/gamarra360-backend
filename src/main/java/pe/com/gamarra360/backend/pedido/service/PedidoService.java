@@ -16,6 +16,7 @@ public interface PedidoService extends CrudService<Pedido, Long> {
 
     PedidoComercianteDetalle obtenerDetalleComerciante(Long id, Integer vendedorId);
 
+    Pedido avanzarEstado(Long id, Integer vendedorId);
     /** Resumen del dashboard del comerciante filtrado por rango de fechas. */
     DashboardResumenDTO obtenerDashboard(Integer vendedorId, LocalDate desde, LocalDate hasta);
 }

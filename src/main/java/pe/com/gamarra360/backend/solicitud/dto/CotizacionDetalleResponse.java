@@ -24,6 +24,7 @@ public class CotizacionDetalleResponse {
     private RespuestaInfo respuesta;
     private Double precioDeseado;
     private Long pedidoId;
+    private String pedidoEstado;
 
     @Getter
     @Setter
