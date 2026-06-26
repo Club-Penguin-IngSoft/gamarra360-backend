@@ -66,6 +66,10 @@ public class AuthService {
             );
         }
         Usuario usuario = optUsuario.get();
+        if (Boolean.FALSE.equals(usuario.getActivo())) {
+            log.info("USUARIO DESACTIVADO intentó iniciar sesión con Google: {}", email);
+            return new AuthResponse(null, usuario.getUsuarioId(), email, usuario.getRol().name(), false, "DESACTIVADO");
+        }
         //Verificar estado si es VENDEDOR
         if (RolEnum.VENDEDOR.equals(usuario.getRol())) {
             Comerciante comerciante = (Comerciante) usuario;
@@ -203,9 +207,18 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         log.info("Login de usuario");
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasenha()));
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasenha()));
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            Usuario usuarioDesactivado = usuarioRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new DatosInvalidosException("Credenciales invalidas."));
+            log.info("USUARIO DESACTIVADO intentó iniciar sesión: {}", request.getEmail());
+            return new AuthResponse(null, usuarioDesactivado.getUsuarioId(), usuarioDesactivado.getEmail(), usuarioDesactivado.getRol().name(), false, "DESACTIVADO");
+        }
+
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new DatosInvalidosException("Credenciales invalidas."));
+
         String token = jwtService.generarToken(new UsuarioPrincipal(usuario));
         return new AuthResponse(token, usuario.getUsuarioId(), usuario.getEmail(), usuario.getNombres(), usuario.getRol().name(), false);
     }
