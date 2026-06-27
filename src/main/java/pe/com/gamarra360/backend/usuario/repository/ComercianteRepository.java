@@ -8,4 +8,9 @@ import java.util.Optional;
 public interface ComercianteRepository extends JpaRepository<Comerciante, Integer> {
     List<Comerciante> findByVerificadoFalse();
     Optional<Comerciante> findByStripeAccountId(String stripeAccountId);
+    long countByVerificadoFalse();
+
+    long countByVerificadoTrueAndAprobadoTrue();
+
+    long countByVerificadoTrueAndAprobadoFalse();
 }
