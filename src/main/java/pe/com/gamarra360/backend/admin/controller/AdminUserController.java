@@ -69,6 +69,10 @@ public class AdminUserController {
         return ResponseEntity.ok(adminUserService.obtenerDetalle(id));
     }
 
+    @GetMapping("/dashboard")
+    public ResponseEntity<DashboardResumenDTO> obtenerDashboard() {
+        return ResponseEntity.ok(adminUserService.obtenerResumenDashboard());
+    }
     // -------------------------------------------------------------------------
     // RF-12: Desactivar y reactivar cuentas
     // -------------------------------------------------------------------------

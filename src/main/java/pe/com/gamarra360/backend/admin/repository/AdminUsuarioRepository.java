@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import pe.com.gamarra360.backend.enums.RolEnum;
 import pe.com.gamarra360.backend.usuario.entity.Usuario;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -31,6 +32,7 @@ public interface AdminUsuarioRepository extends JpaRepository<Usuario, Integer> 
             Pageable pageable
     );
 
+    List<Usuario> findTop10ByOrderByUsuarioIdDesc();
     default Optional<Usuario> findByIdConHistorial(Integer id) {
         return findById(id);
     }

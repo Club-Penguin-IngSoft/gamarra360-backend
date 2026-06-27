@@ -1,4 +1,5 @@
 package pe.com.gamarra360.backend.admin.service;
+import pe.com.gamarra360.backend.enums.EstadoPago;
 import pe.com.gamarra360.backend.enums.RolEnum;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
 import lombok.RequiredArgsConstructor;
@@ -9,9 +10,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.gamarra360.backend.admin.dto.*;
 import pe.com.gamarra360.backend.admin.repository.AdminUsuarioRepository;
+import pe.com.gamarra360.backend.pago.repository.OrdenPagoRepository;
 import pe.com.gamarra360.backend.usuario.entity.Usuario;
+import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * AdminUserService
@@ -31,7 +36,9 @@ public class AdminUserService {
 
     private final AdminUsuarioRepository usuarioRepository;
     private final ApplicationEventPublisher eventPublisher;
-
+    private final OrdenPagoRepository ordenPagoRepository;
+    private final ComercianteRepository comercianteRepository;
+    private static final double COMISION_PLATAFORMA = 0.10;
     // -------------------------------------------------------------------------
     // RF-11: Listar y filtrar usuarios
     // -------------------------------------------------------------------------
@@ -174,5 +181,32 @@ public class AdminUserService {
         dto.setActividad(actividad);
 
         return dto;
+    }
+    @Transactional(readOnly = true)
+    public DashboardResumenDTO obtenerResumenDashboard() {
+        long totalUsuarios = usuarioRepository.count();
+
+        double ventasTotales = ordenPagoRepository.sumarTotalPagado();
+        double ingresosTotales = ventasTotales * COMISION_PLATAFORMA;
+
+        long pendientes = comercianteRepository.countByVerificadoFalse();
+        long aprobados = comercianteRepository.countByVerificadoTrueAndAprobadoTrue();
+        long rechazados = comercianteRepository.countByVerificadoTrueAndAprobadoFalse();
+
+        List<DashboardResumenDTO.ActividadRecienteDTO> actividad =
+                usuarioRepository.findTop10ByOrderByUsuarioIdDesc().stream()
+                        .filter(u -> u.getRol() == RolEnum.VENDEDOR || u.getRol() == RolEnum.CLIENTE)
+                        .limit(5)
+                        .map(u -> new DashboardResumenDTO.ActividadRecienteDTO(
+                                u.getRol() == RolEnum.VENDEDOR ? "COMERCIANTE" : "CLIENTE",
+                                ((u.getNombres() != null ? u.getNombres() : "") + " " +
+                                        (u.getPrimerApellido() != null ? u.getPrimerApellido() : "")).trim(),
+                                u.getEmail()
+                        ))
+                        .collect(Collectors.toList());
+
+        return new DashboardResumenDTO(
+                totalUsuarios, ingresosTotales, pendientes, aprobados, rechazados, actividad
+        );
     }
 }
