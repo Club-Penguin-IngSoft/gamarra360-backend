@@ -1,5 +1,6 @@
 package pe.com.gamarra360.backend.catalogo.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -33,6 +34,7 @@ public class ProductoRequest {
     @NotNull(message = "El tipo de producto es obligatorio")
     private Integer idTipoProducto;
 
+    @JsonAlias({"idMaterial", "idMaterialFiltro"})
     private Integer idMaterialFiltro;
 
     @NotEmpty(message = "Debe incluir al menos una imagen")
