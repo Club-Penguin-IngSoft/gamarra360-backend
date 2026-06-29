@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.com.gamarra360.backend.catalogo.entity.Producto;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
+import pe.com.gamarra360.backend.enums.TipoEntrega;
 import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
 import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO;
 import pe.com.gamarra360.backend.pedido.dto.DashboardResumenDTO.PedidoPorDia;
@@ -82,10 +83,16 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
 
     /* ── Comerciante: avanzar estado del pedido ─────────────────────────── */
 
-    private static final java.util.Map<EstadoPedido, EstadoPedido> SIGUIENTE_ESTADO = java.util.Map.of(
+    private static final java.util.Map<EstadoPedido, EstadoPedido> SIGUIENTE_ESTADO_DELIVERY = java.util.Map.of(
             EstadoPedido.RECIBIDO,            EstadoPedido.EN_PREPARACION,
-            EstadoPedido.EN_PREPARACION,      EstadoPedido.EN_CAMINO,
-            EstadoPedido.EN_CAMINO,           EstadoPedido.LISTO_PARA_ENTREGA,
+            EstadoPedido.EN_PREPARACION,      EstadoPedido.LISTO_PARA_ENTREGA,
+            EstadoPedido.LISTO_PARA_ENTREGA,  EstadoPedido.EN_CAMINO,
+            EstadoPedido.EN_CAMINO,           EstadoPedido.ENTREGADO
+    );
+
+    private static final java.util.Map<EstadoPedido, EstadoPedido> SIGUIENTE_ESTADO_RECOJO = java.util.Map.of(
+            EstadoPedido.RECIBIDO,            EstadoPedido.EN_PREPARACION,
+            EstadoPedido.EN_PREPARACION,      EstadoPedido.LISTO_PARA_ENTREGA,
             EstadoPedido.LISTO_PARA_ENTREGA,  EstadoPedido.ENTREGADO
     );
 
@@ -97,7 +104,14 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
         if (!vendedorId.equals(pedido.getVendedorId())) {
             throw new AccessDeniedException("El pedido no pertenece al comerciante autenticado.");
         }
-        EstadoPedido siguiente = SIGUIENTE_ESTADO.get(pedido.getEstado());
+        
+        EstadoPedido siguiente;
+        if (pedido.getTipoEntrega() == TipoEntrega.RECOJO_TIENDA) {
+            siguiente = SIGUIENTE_ESTADO_RECOJO.get(pedido.getEstado());
+        } else {
+            siguiente = SIGUIENTE_ESTADO_DELIVERY.get(pedido.getEstado());
+        }
+
         if (siguiente == null) {
             throw new ConflictoNegocioException("El pedido ya está en estado final: " + pedido.getEstado());
         }
