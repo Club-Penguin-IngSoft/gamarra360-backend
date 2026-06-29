@@ -95,8 +95,16 @@ public class AdminVendorService {
         comerciante.setVerificado(true);  // verificado = 1
         comerciante.setAprobado(true);    // aprobado = 1
         comercianteRepository.save(comerciante);
-        // Crear tienda si no existe
-        tiendaRepository.findByIdComerciante(comercianteId).orElseGet(() -> tiendaRepository.save(crearTienda(comerciante)));
+
+        /*SIempre va a existir la tienda ya que esta se crea cuando el comerciante se registra */
+
+        //se obtiene la tienda asociada al comerciante
+        var tienda = tiendaRepository.findByIdComerciante(comercianteId)
+                .orElseGet(() -> tiendaRepository.save(crearTienda(comerciante)));
+
+        tienda.setVerificada(true); // Activar la tienda si ya existía
+        tiendaRepository.save(tienda);
+        
         eventPublisher.publishEvent(new VendedorAprobadoEvent(comerciante));
 
         return new RespuestaAprobacionDTO(
