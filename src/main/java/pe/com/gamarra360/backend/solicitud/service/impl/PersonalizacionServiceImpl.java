@@ -408,6 +408,12 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                 .findByClienteIdAndVendedorIdOrderByFechaDesc(p.getClienteId(), p.getVendedorId())
                 .size();
 
+        int cantidad = p.getCantidad() != null ? p.getCantidad() : 1;
+        Double precioUnitario = precioUnitario(v, producto);
+        Double descuentoUnitario = calcularDescuentoUnitario(producto, precioUnitario, cantidad);
+        Double precioBase = precioUnitario != null ? precioUnitario * cantidad : null;
+        Double descuentos = precioBase != null ? descuentoUnitario * cantidad : null;
+
         RespuestaSolicitud respuesta = respuestaSolicitudRepository.findByIdSolicitud(p.getId()).orElse(null);
         PersonalizacionComercianteDetalle.PropuestaInfo propuestaInfo = respuesta != null
                 ? new PersonalizacionComercianteDetalle.PropuestaInfo(
@@ -434,6 +440,8 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                 p.getUrlLogo(),
                 p.getTipoPersonalizacion() != null ? p.getTipoPersonalizacion().name() : null,
                 p.getDescripcion(),
+                precioBase,
+                descuentos,
                 propuestaInfo,
                 p.getPrecioDeseado()
         );
