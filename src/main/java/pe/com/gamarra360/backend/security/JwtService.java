@@ -4,8 +4,11 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import pe.com.gamarra360.backend.usuario.entity.Usuario;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -55,5 +58,18 @@ public class JwtService {
 
     private SecretKey obtenerClave() {
         return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public Integer getUserIdFromContext() {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !(authentication.getPrincipal() instanceof Usuario)) {
+            return null;
+        }
+
+        Usuario user = (Usuario) authentication.getPrincipal();
+
+        return user.getUsuarioId();
     }
 }

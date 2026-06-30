@@ -20,6 +20,7 @@ import pe.com.gamarra360.backend.solicitud.entity.*;
 import pe.com.gamarra360.backend.solicitud.repository.*;
 import pe.com.gamarra360.backend.usuario.entity.Cliente;
 import pe.com.gamarra360.backend.usuario.repository.ClienteRepository;
+import pe.com.gamarra360.backend.usuario.service.NotificacionService;
 
 import java.util.List;
 
@@ -27,7 +28,7 @@ import java.util.List;
 @Slf4j
 public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long> implements
         pe.com.gamarra360.backend.solicitud.service.CotizacionService {
-
+    private final NotificacionService notificacionService;
     private final CotizacionRepository cotizacionRepository;
     private final TiendaRepository tiendaRepository;
     private final DetalleCotizacionRepository detalleCotizacionRepository;
@@ -37,7 +38,7 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
     private final ClienteRepository clienteRepository;
     private final PedidoRepository pedidoRepository;
 
-    public CotizacionServiceImpl(CotizacionRepository cotizacionRepository,
+    public CotizacionServiceImpl(NotificacionService notificacionService,CotizacionRepository cotizacionRepository,
                                   TiendaRepository tiendaRepository,
                                   DetalleCotizacionRepository detalleCotizacionRepository,
                                   CotizacionCatalogoRepository cotizacionCatalogoRepository,
@@ -46,6 +47,7 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                                   ClienteRepository clienteRepository,
                                   PedidoRepository pedidoRepository) {
         super(cotizacionRepository, "Cotizacion");
+        this.notificacionService = notificacionService;
         this.cotizacionRepository = cotizacionRepository;
         this.tiendaRepository = tiendaRepository;
         this.detalleCotizacionRepository = detalleCotizacionRepository;
@@ -77,7 +79,16 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
         cotizacion.setVendedorId(tienda.getIdComerciante());
         cotizacion.setIdTienda(tienda.getIdTienda());
         Cotizacion saved = cotizacionRepository.save(cotizacion);
-
+        notificacionService.crearNotificacion(
+                tienda.getIdComerciante(),
+                clienteId, // 👈 actor real (cliente que envía)
+                "Nueva cotización recibida",
+                "COTIZACION",
+                saved.getId(),
+                "COTIZACION",
+                saved.getEstado() != null ? saved.getEstado().name() : "PENDIENTE",
+                "/comerciante/cotizaciones/" + saved.getId()
+        );
         for (ProductoCotizacionDto dto : request.getProductos()) {
             if ("CATALOGO".equalsIgnoreCase(dto.getTipo()) && dto.getIdVariante() != null) {
                 CotizacionCatalogo cc = new CotizacionCatalogo();

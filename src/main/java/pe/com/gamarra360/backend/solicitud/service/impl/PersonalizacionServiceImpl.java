@@ -34,6 +34,7 @@ import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.com.gamarra360.backend.usuario.service.NotificacionService;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,7 +42,7 @@ import java.util.Optional;
 @Service
 @Slf4j
 public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizacion, Long> implements PersonalizacionService {
-
+    private final NotificacionService notificacionService;
     private final PersonalizacionRepository personalizacionRepository;
     private final ComercianteRepository comercianteRepository;
     private final RespuestaSolicitudRepository respuestaSolicitudRepository;
@@ -50,7 +51,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
     private final ItemPersonalizadoRepository itemPersonalizadoRepository;
     private final ClienteRepository clienteRepository;
 
-    public PersonalizacionServiceImpl(PersonalizacionRepository repository,
+    public PersonalizacionServiceImpl(NotificacionService notificacionService, PersonalizacionRepository repository,
                                        ComercianteRepository comercianteRepository,
                                        RespuestaSolicitudRepository respuestaSolicitudRepository,
                                        DetallePedidoRepository detallePedidoRepository,
@@ -58,6 +59,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                                        ItemPersonalizadoRepository itemPersonalizadoRepository,
                                        ClienteRepository clienteRepository) {
         super(repository, "Personalizacion");
+        this.notificacionService = notificacionService;
         this.personalizacionRepository = repository;
         this.comercianteRepository = comercianteRepository;
         this.respuestaSolicitudRepository = respuestaSolicitudRepository;
@@ -97,6 +99,16 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         p.setCantidad(request.getCantidad() != null ? request.getCantidad() : 1);
 
         Personalizacion saved = personalizacionRepository.save(p);
+        notificacionService.crearNotificacion(
+                request.getVendedorId(),              // receptor (vendedor)
+                clienteId,                            // actor (quien lo hizo)
+                "Nueva personalización recibida",
+                "PERSONALIZACION",
+                saved.getId(),
+                "PERSONALIZACION",
+                saved.getEstado() != null ? saved.getEstado().name() : "PENDIENTE",
+                "/vendedor/personalizacion/" + saved.getId()
+        );
         log.info("Solicitud de personalización creada con ID {}", saved.getId());
         return saved;
     }
