@@ -163,6 +163,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<ErrorRespuestaDto> manejarCredencialesInvalidas(
+            org.springframework.security.authentication.BadCredentialsException ex,
+            HttpServletRequest request) {
+
+        log.warn("401 credenciales inválidas en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorRespuestaDto error = ErrorRespuestaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error("Credenciales inválidas")
+                .mensaje("Correo o contraseña incorrectos.")
+                .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     /* ----------------------- 500: Catch-all ------------------------------ */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorRespuestaDto> manejarGenerico(
@@ -181,4 +199,5 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
+
 }

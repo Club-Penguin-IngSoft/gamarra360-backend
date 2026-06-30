@@ -115,12 +115,13 @@ public class AuthService {
         usuario.setContrasenha(passwordEncoder.encode(request.getContrasenha()));
         usuario.setDni(request.getDni());
         usuario.setTelefono(request.getTelefono());
+        usuario.setTipoDocumento(request.getTipoDocumento());
         usuario.setRol(request.getRol());
         usuario.setActivo(true);
         usuario.setProveedorAuth(ProveedorAuth.LOCAL);
         Usuario guardado = usuarioRepository.save(usuario);
         String token = jwtService.generarToken(new UsuarioPrincipal(guardado));
-        return new AuthResponse(token, guardado.getUsuarioId(), guardado.getEmail(),guardado.getNombres() ,guardado.getRol().name(),false);
+        return new AuthResponse(token, guardado.getUsuarioId(), guardado.getEmail(), guardado.getNombres(), guardado.getRol().name(), false);
     }
 
     public AuthResponse registrarGoogle(RegistroUsuarioRequest request) {
@@ -187,6 +188,7 @@ public class AuthService {
                 ? request.getNombreTienda()
                 : request.getRazonSocial());
         tienda.setInformacion(request.getInformacion());
+        tienda.setFoto(request.getLogoUrl());
         tienda.setPiso(request.getPiso());
         tienda.setStand(request.getStand());
         tienda.setGaleria(request.getGaleria());
@@ -207,17 +209,37 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         log.info("Login de usuario");
-        try {
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasenha()));
-        } catch (org.springframework.security.authentication.DisabledException e) {
-            Usuario usuarioDesactivado = usuarioRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new DatosInvalidosException("Credenciales invalidas."));
-            log.info("USUARIO DESACTIVADO intentó iniciar sesión: {}", request.getEmail());
-            return new AuthResponse(null, usuarioDesactivado.getUsuarioId(), usuarioDesactivado.getEmail(), usuarioDesactivado.getRol().name(), false, "DESACTIVADO");
-        }
 
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new DatosInvalidosException("Credenciales invalidas."));
+
+        // Si el usuario se registró con Google, no puede usar login con contraseña
+        if (ProveedorAuth.GOOGLE.equals(usuario.getProveedorAuth())) {
+            log.info("Intento de login LOCAL para cuenta registrada con Google: {}", request.getEmail());
+            throw new DatosInvalidosException("Este correo está registrado con Google. Inicia sesión con el botón de Google.");
+        }
+
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasenha()));
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            log.info("USUARIO DESACTIVADO intentó iniciar sesión: {}", request.getEmail());
+            return new AuthResponse(null, usuario.getUsuarioId(), usuario.getEmail(), usuario.getRol().name(), false, "DESACTIVADO");
+        }
+
+        // Verificar estado si es VENDEDOR
+        if (RolEnum.VENDEDOR.equals(usuario.getRol())) {
+            Comerciante comerciante = (Comerciante) usuario;
+
+            if (!Boolean.TRUE.equals(comerciante.getVerificado())) {
+                log.info("COMERCIANTE PENDIENTE DE APROBACIÓN: {}", request.getEmail());
+                return new AuthResponse(null, usuario.getUsuarioId(), usuario.getEmail(), "VENDEDOR", false, "PENDIENTE");
+            }
+
+            if (!Boolean.TRUE.equals(comerciante.getAprobado())) {
+                log.info("COMERCIANTE RECHAZADO: {}", request.getEmail());
+                return new AuthResponse(null, usuario.getUsuarioId(), usuario.getEmail(), "VENDEDOR", false, "RECHAZADO");
+            }
+        }
 
         String token = jwtService.generarToken(new UsuarioPrincipal(usuario));
         return new AuthResponse(token, usuario.getUsuarioId(), usuario.getEmail(), usuario.getNombres(), usuario.getRol().name(), false);
@@ -263,5 +285,60 @@ public class AuthService {
             log.error("ERROR VALIDANDO GOOGLE TOKEN", e);
             throw new DatosInvalidosException("Error validando token de Google: " + e.getMessage());
         }
+    }
+    @Transactional
+    public AuthResponse registrarComerciante(RegistroUsuarioRequest request) {
+        log.info("Registro comerciante normal (sin Google): {}", request.getEmail());
+        if (usuarioRepository.existsByEmail(request.getEmail())) {
+            throw new DatosInvalidosException("El correo ya está registrado.");
+        }
+        // 1. Usuario
+        Comerciante usuario = new Comerciante();
+        usuario.setNombres(request.getNombres());
+        usuario.setPrimerApellido(request.getPrimerApellido());
+        usuario.setSegundoApellido(request.getSegundoApellido());
+        usuario.setEmail(request.getEmail());
+        usuario.setContrasenha(passwordEncoder.encode(request.getContrasenha()));
+        usuario.setDni(request.getDni());
+        usuario.setTelefono(request.getTelefono());
+        usuario.setRol(RolEnum.VENDEDOR);
+        usuario.setActivo(true);
+        usuario.setProveedorAuth(ProveedorAuth.LOCAL);
+        // 2. Comerciante
+        usuario.setRuc(request.getRuc());
+        usuario.setRazonSocial(request.getRazonSocial());
+        usuario.setVerificado(false);
+        usuario.setTipoDocumento(request.getTipoDocumento());
+        usuario.setNombreTienda(request.getNombreTienda());
+        usuario.setLogoUrl(request.getLogoUrl());
+        usuario.setNombreComerciante(request.getNombres());
+        usuario.setApellidoComerciante(request.getPrimerApellido());
+        usuario.setAprobado(false);
+        Usuario savedUser = usuarioRepository.save(usuario);
+
+        // Crear Tienda desde el registro, igual que en el flujo de Google
+        Tienda tienda = new Tienda();
+        tienda.setIdComerciante(savedUser.getUsuarioId());
+        tienda.setNombreComercial(request.getNombreTienda() != null
+                ? request.getNombreTienda()
+                : request.getRazonSocial());
+        tienda.setInformacion(request.getInformacion());
+        tienda.setFoto(request.getLogoUrl());
+        tienda.setPiso(request.getPiso());
+        tienda.setStand(request.getStand());
+        tienda.setGaleria(request.getGaleria());
+        tienda.setOfreceEnvioDomicilio(Boolean.TRUE.equals(request.getOfreceEnvioDomicilio()));
+        tienda.setVerificada(false);
+        tiendaRepository.save(tienda);
+
+        String token = jwtService.generarToken(new UsuarioPrincipal(savedUser));
+        return new AuthResponse(
+                token,
+                savedUser.getUsuarioId(),
+                savedUser.getEmail(),
+                savedUser.getNombres(),
+                savedUser.getRol().name(),
+                false
+        );
     }
 }
