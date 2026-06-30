@@ -1,10 +1,11 @@
 package pe.com.gamarra360.backend.usuario.service;
-
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import pe.com.gamarra360.backend.admin.service.VendedorRegistradoEvent;
 import pe.com.gamarra360.backend.enums.ProveedorAuth;
 import pe.com.gamarra360.backend.enums.RolEnum;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
@@ -41,15 +42,18 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final TiendaRepository tiendaRepository;
-
+    private final NotificacionService notificacionService;
+    private final ApplicationEventPublisher eventPublisher;
     public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
                        JwtService jwtService, AuthenticationManager authenticationManager,
-                       TiendaRepository tiendaRepository) {
+                       TiendaRepository tiendaRepository, NotificacionService notificacionService, ApplicationEventPublisher eventPublisher) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
         this.tiendaRepository = tiendaRepository;
+        this.notificacionService = notificacionService;
+        this.eventPublisher = eventPublisher;
     }
 
     public AuthResponse googleLogin(GoogleLoginRequest request) {
@@ -179,7 +183,16 @@ public class AuthService {
         usuario.setApellidoComerciante(request.getPrimerApellido());
         usuario.setAprobado(false);//aprueba o rechaza
         Usuario savedUser = usuarioRepository.save(usuario);
-
+        notificacionService.crearNotificacion(
+                savedUser.getUsuarioId(),   // receptor (admin o comerciante según flujo)
+                savedUser.getUsuarioId(),   // actor (quien se registra)
+                "Tu registro como comerciante está en revisión",
+                "COMERCIANTE",
+                savedUser.getUsuarioId().longValue(),
+                "USUARIO",
+                "PENDIENTE",
+                "/perfil"
+        );
         // Crear Tienda desde el registro para poder persistir los datos de tienda inmediatamente.
         // aprobar() la reutilizará en lugar de crear una nueva.
         Tienda tienda = new Tienda();
@@ -315,7 +328,16 @@ public class AuthService {
         usuario.setApellidoComerciante(request.getPrimerApellido());
         usuario.setAprobado(false);
         Usuario savedUser = usuarioRepository.save(usuario);
-
+        notificacionService.crearNotificacion(
+                savedUser.getUsuarioId(),              // receptor (puede ser admin o el mismo usuario)
+                savedUser.getUsuarioId(),              // actor (el que se registra)
+                "Tu registro como comerciante está en revisión",
+                "COMERCIANTE",
+                savedUser.getUsuarioId().longValue(),
+                "USUARIO",
+                "PENDIENTE",
+                "/perfil"
+        );
         // Crear Tienda desde el registro, igual que en el flujo de Google
         Tienda tienda = new Tienda();
         tienda.setIdComerciante(savedUser.getUsuarioId());
