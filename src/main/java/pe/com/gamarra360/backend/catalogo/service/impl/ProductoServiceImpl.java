@@ -23,6 +23,7 @@ import pe.com.gamarra360.backend.catalogo.repository.*;
 import pe.com.gamarra360.backend.catalogo.service.ProductoService;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
 import pe.com.gamarra360.backend.enums.EstadoSolicitud;
+import pe.com.gamarra360.backend.enums.TipoDescuento;
 import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
@@ -370,11 +371,59 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
                 ));
             }
 
-            // Rango de precio
-            if (f.getPrecioMin() != null)
-                predicados.add(cb.greaterThanOrEqualTo(root.get("precioBase"), f.getPrecioMin()));
-            if (f.getPrecioMax() != null)
-                predicados.add(cb.lessThanOrEqualTo(root.get("precioBase"), f.getPrecioMax()));
+            // Rango de precio efectivo (Opción B):
+            // Un producto aparece si AL MENOS UNA variante disponible con stock tiene
+            // su precio efectivo dentro del rango.
+            // precio_efectivo = COALESCE(v.precioAjustado, p.precioBase) con oferta activa aplicada.
+            if (f.getPrecioMin() != null || f.getPrecioMax() != null) {
+                LocalDateTime ahora = LocalDateTime.now();
+
+                Subquery<Integer> subVariante = query.subquery(Integer.class);
+                Root<VarianteProducto> vRootP = subVariante.from(VarianteProducto.class);
+                Join<VarianteProducto, Producto> vpJoin = vRootP.join("producto", JoinType.INNER);
+                Join<Producto, Oferta> voJoin = vpJoin.join("oferta", JoinType.LEFT);
+
+                // Oferta vigente: activa y dentro del rango de fechas
+                Predicate ofVigente = cb.and(
+                        cb.isNotNull(voJoin.get("idOferta")),
+                        cb.isTrue(voJoin.get("activa")),
+                        cb.lessThanOrEqualTo(voJoin.<LocalDateTime>get("fechaInicio"), ahora),
+                        cb.greaterThanOrEqualTo(voJoin.<LocalDateTime>get("fechaFin"), ahora)
+                );
+
+                // COALESCE(v.precioAjustado, p.precioBase)
+                Expression<Number> baseV = cb.<Number>selectCase()
+                        .when(cb.isNotNull(vRootP.get("precioAjustado")),
+                              vRootP.<Number>get("precioAjustado"))
+                        .otherwise(vpJoin.<Number>get("precioBase"));
+
+                // precio_efectivo = CASE
+                //   WHEN oferta PORCENTAJE → base * (1 - valorDescuento/100)
+                //   WHEN oferta MONTO_FIJO → base - valorDescuento
+                //   ELSE base
+                Expression<Number> pct          = cb.quot(voJoin.<Number>get("valorDescuento"), cb.literal(Double.valueOf(100.0)));
+                Expression<Number> precioConPct  = cb.diff(baseV, cb.prod(baseV, pct));
+                Expression<Number> precioConFijo = cb.diff(baseV, voJoin.<Number>get("valorDescuento"));
+
+                Expression<Number> precioEfV = cb.<Number>selectCase()
+                        .when(cb.and(ofVigente, cb.equal(voJoin.get("tipoDescuento"), TipoDescuento.PORCENTAJE)), precioConPct)
+                        .when(ofVigente, precioConFijo)
+                        .otherwise(baseV);
+
+                List<Predicate> varPreds = new ArrayList<>();
+                varPreds.add(cb.equal(vRootP.get("producto"), root));
+                // NULL se interpreta como "no explícitamente inactiva" → disponible
+                varPreds.add(cb.or(
+                        cb.isNull(vRootP.<Boolean>get("disponible")),
+                        cb.isTrue(vRootP.<Boolean>get("disponible"))
+                ));
+                varPreds.add(cb.greaterThan(vRootP.<Integer>get("stock"), 0));
+                if (f.getPrecioMin() != null) varPreds.add(cb.ge(precioEfV, f.getPrecioMin()));
+                if (f.getPrecioMax() != null) varPreds.add(cb.le(precioEfV, f.getPrecioMax()));
+
+                subVariante.select(cb.literal(1)).where(varPreds.toArray(new Predicate[0]));
+                predicados.add(cb.exists(subVariante));
+            }
 
             // Color — subquery para evitar duplicados por OneToMany
             if (f.getColor() != null && !f.getColor().isBlank()) {
@@ -405,16 +454,6 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
-
-    private Double calcularPrecioFinal(Double precioBase, List<DescuentoVolumen> descuentos) {
-        if (precioBase == null) return null;
-        if (descuentos == null || descuentos.isEmpty()) return precioBase;
-        return descuentos.stream()
-                .filter(d -> Boolean.TRUE.equals(d.getActivo()))
-                .min(Comparator.comparing(DescuentoVolumen::getCantidadMinima))
-                .map(d -> precioBase * (1.0 - d.getPorcentajeDescuento() / 100.0))
-                .orElse(precioBase);
-    }
 
     private boolean esOfertaActiva(Oferta oferta) {
         if (oferta == null || !Boolean.TRUE.equals(oferta.getActiva())) return false;
@@ -478,7 +517,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             r.setPrecioFinal(calcularPrecioConOferta(p.getPrecioBase(), oferta));
             r.setOferta(new OfertaResumenDto(oferta.getTitulo(), oferta.getTipoDescuento(), oferta.getValorDescuento()));
         } else {
-            r.setPrecioFinal(calcularPrecioFinal(p.getPrecioBase(), p.getDescuentosVolumen()));
+            r.setPrecioFinal(p.getPrecioBase());
             r.setOferta(null);
         }
 
@@ -514,6 +553,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         }).collect(Collectors.toList()));
 
         r.setMaterialPrincipal(p.getMaterialFiltro() != null ? p.getMaterialFiltro().getNombre() : null);
+        r.setIdMaterial(p.getMaterialFiltro() != null ? p.getMaterialFiltro().getIdMaterial() : null);
 
         r.setMateriales(especs.stream()
                 .filter(e -> "material".equalsIgnoreCase(e.getNombre()))
@@ -536,6 +576,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setIdVariante(v.getIdVariante());
             d.setSku(v.getSku());
             d.setStock(v.getStock());
+            d.setMinimoStock(v.getMinimoStock());
             d.setPrecioAjustado(v.getPrecioAjustado());
             d.setDisponible(v.getDisponible());
             d.setIdTalla(v.getTalla() != null ? v.getTalla().getIdTalla() : null);
@@ -544,12 +585,10 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setColor(v.getColor() != null ? v.getColor().getNombre() : null);
             d.setColorHex(v.getColor() != null ? v.getColor().getCodHex() : null);
             d.setImagenUrl(v.getImagenUrl());
-            // Precio efectivo: usa precioAjustado de la variante si existe, si no precioBase.
-            // Aplica la misma lógica de oferta/volumen que el precioFinal del producto.
             Double baseVariante = v.getPrecioAjustado() != null ? v.getPrecioAjustado() : p.getPrecioBase();
             d.setPrecioEfectivo(esOfertaActiva(oferta)
                     ? calcularPrecioConOferta(baseVariante, oferta)
-                    : calcularPrecioFinal(baseVariante, p.getDescuentosVolumen()));
+                    : baseVariante);
             return d;
         }).collect(Collectors.toList()));
 

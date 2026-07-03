@@ -498,16 +498,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
     }
 
     private Double calcularDescuentoUnitario(Producto producto, Double precioUnitario, Integer cantidad) {
-        if (producto == null || precioUnitario == null || cantidad == null || producto.getDescuentosVolumen() == null) {
-            return 0.0;
-        }
-        return producto.getDescuentosVolumen().stream()
-                .filter(d -> Boolean.TRUE.equals(d.getActivo()))
-                .filter(d -> d.getCantidadMinima() == null || cantidad >= d.getCantidadMinima())
-                .filter(d -> d.getCantidadMaxima() == null || cantidad <= d.getCantidadMaxima())
-                .map(d -> precioUnitario * (d.getPorcentajeDescuento() / 100.0))
-                .max(Double::compareTo)
-                .orElse(0.0);
+        return 0.0;
     }
 
     private String imagenPrincipal(Producto producto) {

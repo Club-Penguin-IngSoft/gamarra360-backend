@@ -25,6 +25,7 @@ public class ProductoResponse {
     private Integer idTipoProducto;
     private String nombreTipoProducto;
     private String materialPrincipal;
+    private Integer idMaterial;
     private List<String> materiales;
     private Boolean tiendaOfreceEnvio;
     private OfertaResumenDto oferta;
@@ -54,6 +55,7 @@ public class ProductoResponse {
         private Integer idVariante;
         private String sku;
         private Integer stock;
+        private Integer minimoStock;
         private Double precioAjustado;
         /** Precio listo para mostrar: (precioAjustado ?? precioBase) con oferta/volumen aplicados. */
         private Double precioEfectivo;

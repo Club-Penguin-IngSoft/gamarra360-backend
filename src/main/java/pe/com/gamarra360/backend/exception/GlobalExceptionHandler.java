@@ -106,6 +106,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
+    /* -------- 409: Violación de integridad referencial (FK en MySQL) ------ */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorRespuestaDto> manejarIntegridad(
+            org.springframework.dao.DataIntegrityViolationException ex,
+            HttpServletRequest request) {
+
+        log.warn("409 integridad referencial en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorRespuestaDto error = ErrorRespuestaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("No se puede eliminar")
+                .mensaje("No se puede eliminar este elemento porque tiene pedidos o ítems de carrito asociados.")
+                .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
     /* ----------------------- 409: Conflicto de negocio ------------------- */
     @ExceptionHandler(ConflictoNegocioException.class)
     public ResponseEntity<ErrorRespuestaDto> manejarConflicto(
