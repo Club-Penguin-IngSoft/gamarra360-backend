@@ -16,4 +16,9 @@ public interface VarianteProductoRepository extends JpaRepository<VarianteProduc
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT v FROM VarianteProducto v WHERE v.idVariante = :id")
     Optional<VarianteProducto> findByIdWithLock(@Param("id") Integer id);
+
+    // Carga color y talla en el mismo query para evitar proxies lazy sin sesión
+    // (open-in-view=false → la sesión cierra antes de la serialización JSON)
+    @Query("SELECT v FROM VarianteProducto v LEFT JOIN FETCH v.color LEFT JOIN FETCH v.talla WHERE v.idVariante = :id")
+    Optional<VarianteProducto> findByIdConColorYTalla(@Param("id") Integer id);
 }

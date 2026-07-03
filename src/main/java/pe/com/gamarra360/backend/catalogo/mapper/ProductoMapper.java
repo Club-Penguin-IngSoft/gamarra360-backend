@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Mapper Entity ↔ DTO para Producto y entidades relacionadas.
@@ -16,8 +15,6 @@ import java.util.Optional;
  *  - Convertir Producto y sus relaciones lazy en ProductoDto plano para JSON.
  *  - Derivar `tipoServicio` a partir de `esPersonalizable` (la BD no tiene
  *    el enum, la UI sí).
- *  - Calcular `precioFinal` aplicando la mejor regla de descuento por volumen
- *    activa (para cantidad=1, que es la vista catálogo).
  *  - Ordenar imágenes para que la `esPrincipal` quede primera.
  *
  * Patrón Data Mapper (CLAUDE.md §6). Inyectable como bean Spring.
@@ -33,8 +30,6 @@ public class ProductoMapper {
     public ProductoDto toResumenDto(Producto p) {
         if (p == null) return null;
 
-        Double precioFinal = calcularPrecioFinal(p.getPrecioBase(), p.getDescuentosVolumen());
-
         return ProductoDto.builder()
                 .id(String.valueOf(p.getIdProducto()))
                 .titulo(p.getNombre())
@@ -48,7 +43,7 @@ public class ProductoMapper {
                 .categoria(categoriaPrincipal(p.getCategoria()))
                 .tipoServicio(derivarTipoServicio(p.getEsPersonalizable()))
                 .precioBase(p.getPrecioBase())
-                .precioFinal(precioFinal)
+                .precioFinal(p.getPrecioBase())
                 .build();
     }
 
@@ -59,7 +54,6 @@ public class ProductoMapper {
         ProductoDto base = toResumenDto(p);
         base.setVariantes(toVarianteDtoList(p.getVariantes()));
         base.setEspecificaciones(toEspecificacionDtoList(p.getEspecificaciones()));
-        base.setDescuentosVolumen(toDescuentoDtoList(p.getDescuentosVolumen()));
         return base;
     }
 
@@ -74,26 +68,6 @@ public class ProductoMapper {
      */
     private String derivarTipoServicio(Boolean esPersonalizable) {
         return Boolean.TRUE.equals(esPersonalizable) ? "PERSONALIZABLE" : "COMPRA_DIRECTA";
-    }
-
-    /**
-     * Aplica la mejor regla de descuento por volumen activa para cantidad=1.
-     * En el catálogo, mostramos el precio "desde" — el mejor descuento disponible.
-     *
-     * Estrategia: tomar el descuento con menor cantidad_minima entre los activos
-     * (el que aplica al cliente que compra menos).
-     */
-    private Double calcularPrecioFinal(Double precioBase, List<DescuentoVolumen> descuentos) {
-        if (precioBase == null) return null;
-        if (descuentos == null || descuentos.isEmpty()) return precioBase;
-
-        Optional<DescuentoVolumen> mejor = descuentos.stream()
-                .filter(d -> Boolean.TRUE.equals(d.getActivo()))
-                .min(Comparator.comparing(DescuentoVolumen::getCantidadMinima));
-
-        return mejor
-                .map(d -> precioBase * (1.0 - d.getPorcentajeDescuento() / 100.0))
-                .orElse(precioBase);
     }
 
     /**
@@ -166,21 +140,4 @@ public class ProductoMapper {
                 .build();
     }
 
-    private List<DescuentoVolumenDto> toDescuentoDtoList(List<DescuentoVolumen> descuentos) {
-        if (descuentos == null) return Collections.emptyList();
-        return descuentos.stream()
-                .filter(d -> Boolean.TRUE.equals(d.getActivo()))
-                .map(this::toDescuentoDto)
-                .toList();
-    }
-
-    private DescuentoVolumenDto toDescuentoDto(DescuentoVolumen d) {
-        return DescuentoVolumenDto.builder()
-                .idDescuento(d.getIdDescuento())
-                .cantidadMinima(d.getCantidadMinima())
-                .cantidadMaxima(d.getCantidadMaxima())
-                .porcentajeDescuento(d.getPorcentajeDescuento())
-                .activo(d.getActivo())
-                .build();
-    }
 }

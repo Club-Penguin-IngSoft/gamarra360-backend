@@ -14,4 +14,13 @@ public interface VarianteProductoService extends CrudService<VarianteProducto, I
     void descontarStock(Integer idVariante, Integer cantidad);
 
     void actualizarImagen(Integer idVariante, String imagenUrl);
+
+    /**
+     * Borrado físico de la variante con verificación de multi-tenancy.
+     * Lanza RecursoNoEncontradoException (404) si no existe,
+     * AccessDeniedException (403) si pertenece a otra tienda, y propaga
+     * DataIntegrityViolationException (→ 409) si hay pedidos o ítems de
+     * carrito que referencian la variante por FK.
+     */
+    void eliminarVariante(Integer idVariante, Integer comercianteId);
 }
