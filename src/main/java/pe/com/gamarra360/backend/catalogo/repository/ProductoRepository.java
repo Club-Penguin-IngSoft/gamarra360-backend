@@ -29,6 +29,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer>, Jp
 
     List<Producto> findByIdProductoInAndIdTienda(List<Integer> idProductos, Integer idTienda);
 
+    /** Igual que la anterior, pero excluye productos no publicados (RF: promociones solo sobre productos publicados). */
+    List<Producto> findByIdProductoInAndIdTiendaAndActivoTrue(List<Integer> idProductos, Integer idTienda);
+
     List<Producto> findByOferta_IdOferta(Integer idOferta);
 
     List<Producto> findByActivoTrue();

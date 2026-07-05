@@ -35,4 +35,7 @@ public class OfertaRequestDto {
     private Boolean activa = true;
 
     private List<Integer> idsProductos;
+
+    /** true cuando el comerciante ya confirmó reemplazar la asignación de una oferta activa vigente sobre algún producto. */
+    private Boolean forzarSobrescritura = false;
 }

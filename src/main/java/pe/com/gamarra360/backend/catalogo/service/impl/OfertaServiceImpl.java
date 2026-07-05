@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.com.gamarra360.backend.catalogo.dto.ConflictoOfertaDto;
 import pe.com.gamarra360.backend.catalogo.dto.OfertaRequestDto;
 import pe.com.gamarra360.backend.catalogo.dto.OfertaResponseDto;
+import pe.com.gamarra360.backend.catalogo.dto.ProductoConflictoDto;
 import pe.com.gamarra360.backend.catalogo.entity.Oferta;
 import pe.com.gamarra360.backend.catalogo.entity.Producto;
 import pe.com.gamarra360.backend.catalogo.repository.OfertaRepository;
@@ -14,11 +16,13 @@ import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.catalogo.service.OfertaService;
 import pe.com.gamarra360.backend.enums.TipoDescuento;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
+import pe.com.gamarra360.backend.exception.OfertaConflictoException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -135,14 +139,54 @@ public class OfertaServiceImpl implements OfertaService {
 
     private void asignarProductos(Oferta oferta, OfertaRequestDto req, Integer idTienda) {
         List<Integer> idsProductos = req.getIdsProductos();
-        if (idsProductos == null || idsProductos.isEmpty()) return;
-        List<Producto> productos = productoRepository.findByIdProductoInAndIdTienda(idsProductos, idTienda);
-        if (productos.size() != idsProductos.size()) {
-            log.warn("Algunos productos no pertenecen a la tienda {} o no existen — se omiten", idTienda);
+        if (idsProductos == null || idsProductos.isEmpty()) {
+            throw new DatosInvalidosException("Debes seleccionar al menos un producto para la promoción.");
         }
+
+        // Solo productos publicados pueden llevar promoción (RF: promociones requieren productos publicados).
+        List<Producto> productos = productoRepository.findByIdProductoInAndIdTiendaAndActivoTrue(idsProductos, idTienda);
+        if (productos.isEmpty()) {
+            throw new DatosInvalidosException(
+                    "Ninguno de los productos seleccionados está publicado. Publica al menos un producto para poder crear la promoción.");
+        }
+        if (productos.size() != idsProductos.size()) {
+            log.warn("Algunos productos no pertenecen a la tienda {}, no existen o no están publicados — se omiten", idTienda);
+        }
+
         validarDescuentoFijo(req, productos);
+
+        if (!Boolean.TRUE.equals(req.getForzarSobrescritura())) {
+            List<ConflictoOfertaDto> conflictos = detectarConflictos(oferta, productos);
+            if (!conflictos.isEmpty()) {
+                throw new OfertaConflictoException(
+                        "Uno o más productos ya tienen otra oferta activa vigente.", conflictos);
+            }
+        }
+
         productos.forEach(p -> p.setOferta(oferta));
         productoRepository.saveAll(productos);
+    }
+
+    /**
+     * Detecta productos que ya están asignados a OTRA oferta cuyo estado calculado
+     * es ACTIVO (RF: no más de una oferta activa por producto en el mismo período).
+     * Agrupa por la oferta anterior para que el frontend pueda listar el conflicto.
+     */
+    private List<ConflictoOfertaDto> detectarConflictos(Oferta ofertaNueva, List<Producto> productos) {
+        Map<Integer, List<Producto>> porOfertaAnterior = productos.stream()
+                .filter(p -> p.getOferta() != null && !p.getOferta().getIdOferta().equals(ofertaNueva.getIdOferta()))
+                .filter(p -> "ACTIVO".equals(calcularEstado(p.getOferta())))
+                .collect(Collectors.groupingBy(p -> p.getOferta().getIdOferta()));
+
+        return porOfertaAnterior.values().stream()
+                .map(prods -> {
+                    Oferta anterior = prods.get(0).getOferta();
+                    List<ProductoConflictoDto> productosEnConflicto = prods.stream()
+                            .map(p -> new ProductoConflictoDto(p.getIdProducto(), p.getNombre()))
+                            .collect(Collectors.toList());
+                    return new ConflictoOfertaDto(anterior.getIdOferta(), anterior.getTitulo(), productosEnConflicto);
+                })
+                .collect(Collectors.toList());
     }
 
     private void validarDescuentoFijo(OfertaRequestDto req, List<Producto> productos) {

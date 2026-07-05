@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  *  - 400 → MethodArgumentNotValidException, DatosInvalidosException
  *  - 403 → AccessDeniedException, DisabledException
  *  - 404 → RecursoNoEncontradoException
- *  - 409 → ConflictoNegocioException
+ *  - 409 → ConflictoNegocioException, OfertaConflictoException (con detalle de conflictos)
  *  - 500 → Exception (catch-all)
  */
 @RestControllerAdvice
@@ -139,6 +139,26 @@ public class GlobalExceptionHandler {
                 .error("Conflicto")
                 .mensaje(ex.getMessage())
                 .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /* --- 409: Conflicto de oferta activa vigente sobre el mismo producto -- */
+    @ExceptionHandler(OfertaConflictoException.class)
+    public ResponseEntity<ErrorConflictoOfertaDto> manejarConflictoOferta(
+            OfertaConflictoException ex,
+            HttpServletRequest request) {
+
+        log.warn("409 conflicto de oferta en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorConflictoOfertaDto error = ErrorConflictoOfertaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflicto de oferta")
+                .mensaje(ex.getMessage())
+                .ruta(request.getRequestURI())
+                .conflictos(ex.getConflictos())
                 .build();
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);

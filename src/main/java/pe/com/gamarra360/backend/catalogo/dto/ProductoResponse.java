@@ -20,6 +20,7 @@ public class ProductoResponse {
     private Integer idTienda;
     private Integer idComerciante;
     private String nombreTienda;
+    private String logoTienda;
     private Integer idCategoria;
     private String nombreCategoria;
     private Integer idTipoProducto;
