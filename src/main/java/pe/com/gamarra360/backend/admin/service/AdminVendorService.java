@@ -114,7 +114,10 @@ public class AdminVendorService {
     }
 
     /**
-     * Rechazar: verificado = 0 (se mantiene), activo = 0.
+     * Rechazar: verificado = true (la solicitud ya fue revisada), aprobado = false.
+     * verificado debe quedar en true — es lo que permite a AuthService distinguir
+     * RECHAZADO (verificado=true, aprobado=false) de PENDIENTE (verificado=false),
+     * ver login en AuthService.
      */
     @Transactional
     public RespuestaAprobacionDTO rechazarVendedor(Integer comercianteId, String razon) {

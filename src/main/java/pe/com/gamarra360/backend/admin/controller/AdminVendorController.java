@@ -25,8 +25,9 @@ import pe.com.gamarra360.backend.admin.service.AdminVendorService;
  *   SUSPENDIDO              →  (admin reactiva)    →  APROBADO
  *
  * Cada transición de estado dispara un evento de dominio que:
- *  1. Persiste el cambio en la entidad Comerciante (verificado, activo).
- *  2. Publica una notificación asíncrona vía @Async al email del comerciante.
+ *  1. Persiste el cambio en la entidad Comerciante (verificado, aprobado).
+ *  2. Envía una notificación por email al comerciante (VendedorAprobacionListener,
+ *     vía @TransactionalEventListener después del commit — no usa @Async).
  *  3. Si el estado es APROBADO, habilita la Tienda y asigna el tenant_id.
  *
  * El controlador NO contiene lógica de negocio. Delega todo al AdminVendorService.
@@ -96,8 +97,8 @@ public class AdminVendorController {
      *  1. Comerciante.verificado = true, activo = true.
      *  2. Se crea/activa la Tienda asociada con su tenant_id.
      *  3. El rol del Usuario asociado permanece VENDEDOR (ya asignado en registro).
-     *  4. Se dispara notificación asíncrona de aprobación al email del comerciante.
-     *  5. Se registra el evento en el log de auditoría (quién aprobó, cuándo).
+     *  4. Se envía la notificación de aprobación al email del comerciante
+     *     (VendedorAprobacionListener, después del commit de la transacción).
      */
     @PostMapping("/{comercianteId}/aprobar")
     public ResponseEntity<RespuestaAprobacionDTO> aprobarVendedor(
@@ -112,14 +113,16 @@ public class AdminVendorController {
      * Transición: PENDIENTE_APROBACION → RECHAZADO
      *
      * El cuerpo de la petición debe incluir el motivo del rechazo.
-     * Este motivo se persiste en el campo mensaje_rechazo_cliente de la Solicitud
-     * y se incluye en la notificación enviada al comerciante.
+     * Este motivo se incluye en la notificación enviada al comerciante.
      *
      * Efectos:
-     *  1. Comerciante.verificado = false, activo = false.
-     *  2. El usuario puede volver a postular (flujo de re-solicitud en front).
-     *  3. Se dispara notificación con el motivo al email del comerciante.
-     *  4. Se registra en el log de auditoría.
+     *  1. Comerciante.verificado = true (la solicitud ya fue revisada), aprobado = false.
+     *     verificado debe quedar en true para que AuthService distinga este estado
+     *     (RECHAZADO) del estado PENDIENTE (verificado = false, aún sin revisar).
+     *  2. El comerciante sigue sin poder iniciar sesión con acceso completo — el login
+     *     le devuelve estadoSolicitud = "RECHAZADO" en vez de emitir un token.
+     *  3. Se dispara notificación con el motivo al email del comerciante
+     *     (VendedorAprobacionListener, después del commit de la transacción).
      */
     @PostMapping("/{comercianteId}/rechazar")
     public ResponseEntity<RespuestaAprobacionDTO> rechazarVendedor(
