@@ -526,6 +526,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setIdTienda(p.getIdTienda());
         r.setIdComerciante(p.getTienda() != null ? p.getTienda().getIdComerciante() : null);
         r.setNombreTienda(nombreTienda);
+        r.setLogoTienda(p.getTienda() != null ? p.getTienda().getFoto() : null);
 
         Integer idComerciante = p.getTienda() != null ? p.getTienda().getIdComerciante() : null;
         Boolean comercianteActivo = idComerciante != null

@@ -29,7 +29,15 @@ import pe.com.gamarra360.backend.pedido.repository.DetallePedidoRepository;
 import pe.com.gamarra360.backend.solicitud.repository.CotizacionCatalogoRepository;
 import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
+import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
+import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
+
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -126,6 +134,90 @@ class ProductoServiceImplTest {
         assertThat(response.getIdMaterial()).isNull();
         assertThat(response.getMaterialPrincipal()).isNull();
         verify(materialFiltroRepository, never()).findById(any());
+    }
+
+    // ── GET /api/v1/productos?q= → búsqueda por keyword en listarConFiltros ────
+
+    @Test
+    @DisplayName("debeFiltrarPorNombreOdescripcion_cuandoSeEnviaParametroQ")
+    void debeFiltrarPorNombreOdescripcion_cuandoSeEnviaParametroQ() {
+        Producto p = crearProducto(20, "Buzo Algodón Premium");
+        Page<Producto> pagina = new PageImpl<>(List.of(p), PageRequest.of(0, 12), 1);
+        when(productoRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(pagina);
+        stubToResponse(20);
+
+        FiltrosCatalogoDto filtros = new FiltrosCatalogoDto();
+        filtros.setQ("algodón");
+
+        PaginaResponse<ProductoResponse> response = service.listarConFiltros(filtros);
+
+        assertThat(response.getTotalElementos()).isEqualTo(1);
+        assertThat(response.getContenido()).hasSize(1);
+        assertThat(response.getContenido().get(0).getNombre()).isEqualTo("Buzo Algodón Premium");
+        verify(productoRepository).findAll(any(Specification.class), any(PageRequest.class));
+    }
+
+    @Test
+    @DisplayName("debeCombinarQConOtrosFiltros_cuandoAmbosEstanPresentes")
+    void debeCombinarQConOtrosFiltros_cuandoAmbosEstanPresentes() {
+        Producto p1 = crearProducto(21, "Polo Oversize");
+        Producto p2 = crearProducto(22, "Polo Básico");
+        Page<Producto> pagina = new PageImpl<>(List.of(p1, p2), PageRequest.of(0, 12), 2);
+        when(productoRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(pagina);
+        stubToResponse(21, 22);
+
+        FiltrosCatalogoDto filtros = new FiltrosCatalogoDto();
+        filtros.setQ("polo");
+        filtros.setCategorias(List.of("Camisas"));
+
+        PaginaResponse<ProductoResponse> response = service.listarConFiltros(filtros);
+
+        assertThat(response.getTotalElementos()).isEqualTo(2);
+        assertThat(response.getContenido()).hasSize(2);
+        assertThat(response.getPaginaActual()).isZero();
+        verify(productoRepository).findAll(any(Specification.class), any(PageRequest.class));
+    }
+
+    @Test
+    @DisplayName("debeDevolverListaVacia_cuandoQNoCoincideConNingunProducto")
+    void debeDevolverListaVacia_cuandoQNoCoincideConNingunProducto() {
+        Page<Producto> pagina = new PageImpl<>(List.of(), PageRequest.of(0, 12), 0);
+        when(productoRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(pagina);
+
+        FiltrosCatalogoDto filtros = new FiltrosCatalogoDto();
+        filtros.setQ("xyzxyz_sin_resultados");
+
+        PaginaResponse<ProductoResponse> response = service.listarConFiltros(filtros);
+
+        assertThat(response.getTotalElementos()).isZero();
+        assertThat(response.getTotalPaginas()).isZero();
+        assertThat(response.getContenido()).isEmpty();
+    }
+
+    // ── Helpers para tests de listarConFiltros ───────────────────────────────
+
+    /** Crea un Producto mínimo con tienda asignada para que toResponse() funcione. */
+    private Producto crearProducto(int id, String nombre) {
+        Tienda t = new Tienda();
+        t.setIdTienda(1);
+        t.setIdComerciante(1);
+
+        Producto p = new Producto();
+        p.setIdProducto(id);
+        p.setNombre(nombre);
+        p.setPrecioBase(50.0);
+        p.setActivo(true);
+        p.setTienda(t);
+        return p;
+    }
+
+    /** Stubs los repositorios de lectura que toResponse() necesita para cada producto. */
+    private void stubToResponse(int... idProductos) {
+        for (int id : idProductos) {
+            when(imagenProductoRepository.findByIdProducto(id)).thenReturn(Collections.emptyList());
+            when(especificacionRepository.findByIdProducto(id)).thenReturn(Collections.emptyList());
+            when(varianteProductoRepository.findByIdProducto(id)).thenReturn(Collections.emptyList());
+        }
     }
 
     // ── PUT /api/v1/productos/{id} → actualiza la relación Material ───────────
