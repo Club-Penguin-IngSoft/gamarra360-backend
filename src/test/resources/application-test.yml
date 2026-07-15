@@ -1,0 +1,42 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:gamarra360db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# Configuración de variables con valores ficticios para evitar fallos de inicialización
+app:
+  jwt:
+    secret: test-secret-key-for-gamarra360-integration-tests-must-be-long-enough-12345
+    expiration-ms: 3600000
+jwt:
+  secret: test-secret-key-for-gamarra360-integration-tests-must-be-long-enough-12345
+  expiration-ms: 3600000
+
+stripe:
+  secret-key: sk_test_mock
+  webhook-secret: whsec_mock
+  webhook-secret-connect: whsec_connect_mock
+  commission-rate: 0.10
+
+aws:
+  credentials:
+    access-key: mock-access-key
+    secret-key: mock-secret-key
+    session-token: mock-session-token
+  region:
+    static: us-east-1
+  s3:
+    bucket: mock-bucket
+
+storage:
+  provider: S3

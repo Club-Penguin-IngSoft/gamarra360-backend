@@ -87,16 +87,17 @@ class AuthServiceTest {
     @Test
     @DisplayName("Prueba de login fallido por credenciales inválidas (Password incorrecto)")
     void login_InvalidCredentials() {
-        // GIVEN: El AuthenticationManager lanza BadCredentialsException
+        // GIVEN: El usuario existe pero el AuthenticationManager lanza BadCredentialsException
+        when(usuarioRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.of(usuario));
         doThrow(new BadCredentialsException("Credenciales inválidas"))
                 .when(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
 
         // WHEN & THEN: Se espera que la excepción se propague
         assertThrows(BadCredentialsException.class, () -> authService.login(loginRequest));
         
+        verify(usuarioRepository).findByEmail(loginRequest.getEmail());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verifyNoInteractions(jwtService);
-        verifyNoInteractions(usuarioRepository);
     }
 
     @Test
