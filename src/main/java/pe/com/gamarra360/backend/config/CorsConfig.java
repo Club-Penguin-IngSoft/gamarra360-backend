@@ -33,8 +33,7 @@ public class CorsConfig implements WebMvcConfigurer {
             frontendUrl
         );
     }
-            "https://gamarra360.duckdns.org"
-    );
+
 
     private static final List<String> ALLOWED_METHODS =
             List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
