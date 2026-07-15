@@ -21,12 +21,18 @@ import java.util.List;
  */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
+    @org.springframework.beans.factory.annotation.Value("${app.frontend.url}")
+    private String frontendUrl;
 
-    private static final List<String> ALLOWED_ORIGINS = List.of(
+    private List<String> getAllowedOrigins() {
+        return List.of(
             "http://localhost:5173",
             "http://localhost:5174",
             "http://localhost:3000",
             "https://gamarra360.amplifyapp.com",
+            frontendUrl
+        );
+    }
             "https://gamarra360.duckdns.org"
     );
 
@@ -37,7 +43,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(ALLOWED_ORIGINS);
+        config.setAllowedOrigins(getAllowedOrigins());
         config.setAllowedMethods(ALLOWED_METHODS);
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
@@ -53,7 +59,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins(ALLOWED_ORIGINS.toArray(String[]::new))
+                .allowedOrigins(getAllowedOrigins().toArray(String[]::new))
                 .allowedMethods(ALLOWED_METHODS.toArray(String[]::new))
                 .allowedHeaders("*")
                 .exposedHeaders("Authorization")
