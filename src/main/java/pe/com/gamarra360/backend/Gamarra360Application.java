@@ -8,10 +8,8 @@ import java.util.TimeZone;
 public class Gamarra360Application {
 
     public static void main(String[] args) {
-        // Fuerza JVM a UTC antes de que cualquier componente se inicialice.
-        // Sin esto, LocalDateTime se convierte a Timestamp usando el TZ del SO
-        // antes de llegar al conector JDBC, causando desfases al persistir fechas.
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        // Usa la zona horaria de Lima antes de inicializar los componentes.
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Lima"));
         SpringApplication.run(Gamarra360Application.class, args);
     }
 }

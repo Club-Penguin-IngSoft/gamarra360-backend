@@ -184,6 +184,10 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
                 .map(this::toResumen)
                 .toList();
 
+        List<PedidoComercianteResumen> pedidosDelPeriodo = pedidos.stream()
+                .map(this::toResumen)
+                .toList();
+
         // 4. Top 5 productos más solicitados y todos los productos ordenados
         List<Long> pedidoIds = pedidos.stream().map(Pedido::getId).toList();
         List<ProductoTop> topProductos = new ArrayList<>();
@@ -243,6 +247,7 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
                 todosProductos,
                 pedidosRecientes,
                 pedidosCompletados,
+                pedidosDelPeriodo,
                 totalUnidades,
                 totalIngresos
         );

@@ -12,6 +12,7 @@ public record DashboardResumenDTO(
         List<ProductoTop>        todosLosProductos,
         List<PedidoComercianteResumen> pedidosRecientes,
         List<PedidoComercianteResumen> pedidosCompletados,
+        List<PedidoComercianteResumen> pedidosDelPeriodo,
         int                      totalUnidades,
         double                   totalIngresos
 ) {
