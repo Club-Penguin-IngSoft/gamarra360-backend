@@ -12,6 +12,7 @@ import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
 import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.enums.EstadoSolicitud;
 import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
+import pe.com.gamarra360.backend.exception.DatosInvalidosException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
 import pe.com.gamarra360.backend.pedido.repository.PedidoRepository;
 import pe.com.gamarra360.backend.service.AbstractCrudService;
@@ -90,7 +91,10 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                 "/comerciante/cotizaciones/" + saved.getId()
         );
         for (ProductoCotizacionDto dto : request.getProductos()) {
-            if ("CATALOGO".equalsIgnoreCase(dto.getTipo()) && dto.getIdVariante() != null) {
+            if ("CATALOGO".equalsIgnoreCase(dto.getTipo())) {
+                if (dto.getIdVariante() == null) {
+                    throw new DatosInvalidosException("Selecciona una variante para cada producto del catálogo.");
+                }
                 CotizacionCatalogo cc = new CotizacionCatalogo();
                 cc.setIdCotizacion(saved.getId());
                 cc.setIdDetalleProducto(dto.getIdVariante());
@@ -98,6 +102,9 @@ public class CotizacionServiceImpl extends AbstractCrudService<Cotizacion, Long>
                 cc.setCantidad(dto.getCantidad() != null ? dto.getCantidad() : 1);
                 cotizacionCatalogoRepository.save(cc);
             } else {
+                if (dto.getNombre() == null || dto.getNombre().isBlank()) {
+                    throw new DatosInvalidosException("El nombre del producto manual es obligatorio.");
+                }
                 DetalleCotizacion dc = new DetalleCotizacion();
                 dc.setIdCotizacion(saved.getId());
                 dc.setEspecificacion(dto.getEspecificacion());

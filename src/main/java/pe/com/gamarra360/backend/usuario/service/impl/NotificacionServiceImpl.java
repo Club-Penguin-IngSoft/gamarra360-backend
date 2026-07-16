@@ -3,6 +3,7 @@ package pe.com.gamarra360.backend.usuario.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pe.com.gamarra360.backend.service.AbstractCrudService;
 import pe.com.gamarra360.backend.usuario.entity.Notificacion;
 import pe.com.gamarra360.backend.usuario.repository.NotificacionRepository;
@@ -30,6 +31,14 @@ public class NotificacionServiceImpl extends AbstractCrudService<Notificacion, I
     @Override
     public List<Notificacion> listarPorUsuario(Integer usuarioId) {
         return repository.findByUsuarioIdOrderByFechaCreacionDesc(usuarioId);
+    }
+
+    @Override
+    @Transactional
+    public Notificacion marcarComoLeida(Integer id) {
+        Notificacion notificacion = obtener(id);
+        notificacion.setFueleida(true);
+        return repository.saveAndFlush(notificacion);
     }
     @Override
     public void crearNotificacion(

@@ -18,4 +18,5 @@ public interface NotificacionService extends CrudService<Notificacion, Integer> 
     );
     List<Notificacion> obtenerPorUsuarioId(Integer usuarioId);
     List<Notificacion> listarPorUsuario(Integer usuarioId);
+    Notificacion marcarComoLeida(Integer id);
 }

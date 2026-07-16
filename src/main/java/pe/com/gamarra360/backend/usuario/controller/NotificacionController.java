@@ -71,15 +71,7 @@ public class NotificacionController {
 
     @PutMapping("/leida/{id}")
     public ResponseEntity<Notificacion> marcarLeida(@PathVariable Integer id) {
-
-        Notificacion n = service.obtener(id);
-
-        if (n == null) {
-            throw new RuntimeException("No existe");
-        }
-
-        n.setFueleida(true);
-
-        return ResponseEntity.ok(service.actualizar(id, n));
+        log.info("PUT /api/v1/notificaciones/leida/{}", id);
+        return ResponseEntity.ok(service.marcarComoLeida(id));
     }
 }
