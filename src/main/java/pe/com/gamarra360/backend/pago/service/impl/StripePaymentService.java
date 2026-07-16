@@ -136,7 +136,7 @@ public class StripePaymentService {
                 .build();
 
         RequestOptions options = RequestOptions.builder()
-                .setIdempotencyKey("carrito-" + carrito.getId())
+                .setIdempotencyKey("carrito-" + carrito.getId() + "-" + java.util.UUID.randomUUID().toString())
                 .build();
 
         PaymentIntent intent = PaymentIntent.create(params, options);
