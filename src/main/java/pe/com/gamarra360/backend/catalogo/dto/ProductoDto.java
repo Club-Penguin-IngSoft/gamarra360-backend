@@ -15,9 +15,8 @@ import java.util.List;
  * El campo `tipoServicio` se DERIVA en el mapper a partir de `esPersonalizable`
  * (la BD no tiene un enum tipo_servicio; ver CLAUDE.md de IProducto.ts).
  *
- * `precioFinal` también se DERIVA en el mapper aplicando la regla
- * `descuentosVolumen` mínima (la que aplica para cantidad=1 o el menor
- * cantidadMinima). Si no hay regla activa, es igual a `precioBase`.
+ * `precioFinal` es igual a `precioBase` a menos que haya una oferta por temporada
+ * activa (tabla `ofertas`), en cuyo caso se calcula en ProductoServiceImpl.
  */
 @Data
 @Builder
@@ -55,10 +54,9 @@ public class ProductoDto {
     /** Precio base sin descuentos */
     private Double precioBase;
 
-    /** Precio final con la mejor regla de descuento aplicada (cantidad=1) */
+    /** Precio final con oferta por temporada aplicada (si hay una activa) */
     private Double precioFinal;
 
     private List<VarianteProductoDto> variantes;
     private List<EspecificacionProductoDto> especificaciones;
-    private List<DescuentoVolumenDto> descuentosVolumen;
 }

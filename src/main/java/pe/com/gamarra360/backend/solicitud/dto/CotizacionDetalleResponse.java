@@ -22,6 +22,9 @@ public class CotizacionDetalleResponse {
     private String fotoTienda;
     private List<ProductoDetalleInfo> productos;
     private RespuestaInfo respuesta;
+    private Double precioDeseado;
+    private Long pedidoId;
+    private String pedidoEstado;
 
     @Getter
     @Setter

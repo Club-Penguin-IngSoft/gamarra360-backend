@@ -25,6 +25,8 @@ public class DetallePedido {
     private Double precio;
     @Column(name = "personalizacion_id")
     private Long personalizacionId;
+    @Column(name = "cotizacion_id")
+    private Long cotizacionId;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pedido_id", insertable = false, updatable = false)
     @JsonIgnore

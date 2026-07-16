@@ -17,6 +17,10 @@ import java.util.List;
 public class Cotizacion extends Solicitud {
     @Column(name = "id_tienda")
     private Integer idTienda;
+    @Column(name = "precio_deseado")
+    private Double precioDeseado;
+    @Column(name = "pedido_id")
+    private Long pedidoId;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_tienda", insertable = false, updatable = false)
     @JsonIgnore

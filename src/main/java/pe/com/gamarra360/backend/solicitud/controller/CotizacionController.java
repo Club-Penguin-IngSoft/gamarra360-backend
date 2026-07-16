@@ -114,4 +114,24 @@ public class CotizacionController {
         log.info("POST /api/v1/cotizaciones/{}/responder — vendedor {}", id, vendedorId);
         return ResponseEntity.ok(service.responder(id, request, vendedorId));
     }
+
+    @PostMapping("/{id}/contra-proponer")
+    public ResponseEntity<CotizacionDetalleResponse> contraProponerCotizacion(
+            @PathVariable Long id,
+            @RequestBody ContraPropuestaRequest request,
+            Authentication auth) {
+        Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("POST /api/v1/cotizaciones/{}/contra-proponer — cliente {}", id, clienteId);
+        return ResponseEntity.ok(service.contraProponerCotizacion(id, request, clienteId));
+    }
+
+    @PatchMapping("/comerciante/{id}/cancelar")
+    public ResponseEntity<Void> cancelarPorVendedor(
+            @PathVariable Long id,
+            Authentication auth) {
+        Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        log.info("PATCH /api/v1/cotizaciones/comerciante/{}/cancelar — vendedor {}", id, vendedorId);
+        service.cancelarPorVendedor(id, vendedorId);
+        return ResponseEntity.noContent().build();
+    }
 }

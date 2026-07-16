@@ -95,8 +95,16 @@ public class AdminVendorService {
         comerciante.setVerificado(true);  // verificado = 1
         comerciante.setAprobado(true);    // aprobado = 1
         comercianteRepository.save(comerciante);
-        // Crear tienda si no existe
-        tiendaRepository.findByIdComerciante(comercianteId).orElseGet(() -> tiendaRepository.save(crearTienda(comerciante)));
+
+        /*SIempre va a existir la tienda ya que esta se crea cuando el comerciante se registra */
+
+        //se obtiene la tienda asociada al comerciante
+        var tienda = tiendaRepository.findByIdComerciante(comercianteId)
+                .orElseGet(() -> tiendaRepository.save(crearTienda(comerciante)));
+
+        tienda.setVerificada(true); // Activar la tienda si ya existía
+        tiendaRepository.save(tienda);
+        
         eventPublisher.publishEvent(new VendedorAprobadoEvent(comerciante));
 
         return new RespuestaAprobacionDTO(
@@ -106,7 +114,10 @@ public class AdminVendorService {
     }
 
     /**
-     * Rechazar: verificado = 0 (se mantiene), activo = 0.
+     * Rechazar: verificado = true (la solicitud ya fue revisada), aprobado = false.
+     * verificado debe quedar en true — es lo que permite a AuthService distinguir
+     * RECHAZADO (verificado=true, aprobado=false) de PENDIENTE (verificado=false),
+     * ver login en AuthService.
      */
     @Transactional
     public RespuestaAprobacionDTO rechazarVendedor(Integer comercianteId, String razon) {

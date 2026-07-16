@@ -21,6 +21,8 @@ public record PedidoRequestDTO(
 
         String direccionEntrega,      // requerido solo si tipoEntrega = DELIVERY
 
+        Integer idDistrito,           // requerido solo si tipoEntrega = DELIVERY
+
         @NotNull @Positive
         Double total,
 

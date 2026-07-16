@@ -6,6 +6,7 @@ import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionComercianteResumen
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionDetalleResponse;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionResumen;
+import pe.com.gamarra360.backend.solicitud.dto.ContraPropuestaRequest;
 import pe.com.gamarra360.backend.solicitud.dto.RespuestaPersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
 
@@ -39,4 +40,13 @@ public interface PersonalizacionService extends CrudService<Personalizacion, Lon
 
     /** El comerciante acepta (cotiza) o rechaza una solicitud en estado PENDIENTE. */
     PersonalizacionComercianteDetalle responder(Long id, RespuestaPersonalizacionRequest request, Integer vendedorId);
+
+    /** El cliente cancela su propia solicitud en estado PENDIENTE o RESPONDIDA. */
+    void cancelarPorCliente(Long id, Integer clienteId);
+
+    /** El comerciante cancela una solicitud que le pertenece, en estado PENDIENTE o RESPONDIDA. */
+    void cancelarPorVendedor(Long id, Integer vendedorId);
+
+    /** El cliente envía una contrapropuesta cuando la solicitud está en estado RESPONDIDA: vuelve a PENDIENTE. */
+    PersonalizacionDetalleResponse contraProponerCliente(Long id, ContraPropuestaRequest request, Integer clienteId);
 }

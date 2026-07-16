@@ -59,5 +59,9 @@ public class AuthController {
         log.info("POST /api/v1/auth/login");
         return ResponseEntity.ok(authService.login(request));
     }
-
+    @PostMapping("/register-comerciante")
+    public ResponseEntity<AuthResponse> registrarComerciante(@RequestBody RegistroUsuarioRequest request) {
+        log.info("POST /api/v1/auth/register-comerciante");
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registrarComerciante(request));
+    }
 }

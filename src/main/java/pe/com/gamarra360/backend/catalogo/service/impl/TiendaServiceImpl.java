@@ -87,6 +87,10 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
                             t.getInformacion(),
                             t.getFoto(),
                             t.getVerificada(),
+                            t.getGaleria(),
+                            t.getOfreceEnvioDomicilio(),
+                            t.getPiso(),
+                            t.getStand(),
                             categorias,
                             new java.util.ArrayList<>(servicios),
                             tiposProducto
@@ -123,6 +127,10 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
         dto.setInformacion(tienda.getInformacion());
         dto.setFoto(tienda.getFoto());
         dto.setVerificada(tienda.getVerificada());
+
+        Comerciante comerciante = comercianteRepository.findById(tienda.getIdComerciante())
+                .orElse(null);
+        dto.setComercianteActivo(comerciante != null ? comerciante.getActivo() : true);
 
         java.util.List<PerfilTiendaPublicaDto.ProductoResumenDto> productosActivos = tienda.getProductos()
             .stream()
@@ -173,6 +181,10 @@ public class TiendaServiceImpl extends AbstractCrudService<Tienda, Integer> impl
             .sorted()
             .collect(Collectors.toList());
 
+        dto.setGaleria(tienda.getGaleria());
+        dto.setOfreceEnvioDomicilio(tienda.getOfreceEnvioDomicilio());
+        dto.setPiso(tienda.getPiso());
+        dto.setStand(tienda.getStand());
         dto.setProductos(productosActivos);
         dto.setCategorias(categorias);
         dto.setTiposServicio(new java.util.ArrayList<>(servicios));

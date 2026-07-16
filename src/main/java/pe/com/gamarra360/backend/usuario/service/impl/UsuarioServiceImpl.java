@@ -49,18 +49,12 @@ public class UsuarioServiceImpl extends AbstractCrudService<Usuario, Integer> im
             );
         }
 
-        // Actualiza tabla clientes — nombre, apellido Y dirección
-        clienteRepository.findById(id).ifPresent(cliente -> {
-            if (request.nombres() != null) {
-                cliente.setNombre(request.nombres());
-            }
-            if (request.primerApellido() != null) {
-                cliente.setApellido(request.primerApellido());
-            }
-            if (request.direccionEntrega() != null) {
+        // Actualiza dirección en tabla clientes (identidad ya actualizada en usuarios)
+        if (request.direccionEntrega() != null) {
+            clienteRepository.findById(id).ifPresent(cliente -> {
                 cliente.setDireccionEntrega(request.direccionEntrega());
-            }
-            clienteRepository.save(cliente);
-        });
+                clienteRepository.save(cliente);
+            });
+        }
     }
 }

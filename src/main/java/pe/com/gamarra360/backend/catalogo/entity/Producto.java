@@ -13,7 +13,7 @@ import java.util.List;
  *
  * CU-08 (RF-22, RF-23): este entity expone todos los campos que la ficha
  * de producto del frontend necesita — descripción, variantes (con stock),
- * imágenes, especificaciones y reglas de descuento por volumen.
+ * imágenes y especificaciones.
  *
  * Para listado en catálogo público, el ProductoService filtra por:
  *  - producto.activo = TRUE
@@ -69,9 +69,6 @@ public class Producto {
     @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Especificacion> especificaciones = new ArrayList<>();
 
-    @OneToMany(mappedBy = "producto", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private List<DescuentoVolumen> descuentosVolumen = new ArrayList<>();
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_categoria")
     private Categoria categoria;
@@ -79,4 +76,12 @@ public class Producto {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_tipo_producto")
     private TipoProducto tipoProducto;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_material_filtro")
+    private MaterialFiltro materialFiltro;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_oferta")
+    private Oferta oferta;
 }

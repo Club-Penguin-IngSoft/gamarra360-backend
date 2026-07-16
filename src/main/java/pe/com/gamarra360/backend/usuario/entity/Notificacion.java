@@ -20,11 +20,26 @@ public class Notificacion {
     private Integer idNotificacion;
     @Column(name = "usuario_id")
     private Integer usuarioId;
+
     private String mensaje;
     private Boolean fueleida;
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
     private String tipo;
+    @Column(name = "actor_id")
+    private Integer actorId; // quien lo hizo
+
+    @Column(name = "referencia_id")
+    private Long referenciaId; // cotización/pedido/etc
+
+    @Column(name = "referencia_tipo")
+    private String referenciaTipo; // COTIZACION / PEDIDO
+
+    @Column(name = "estado_referencia")
+    private String estadoReferencia; // estado real
+
+    @Column(name = "ruta")
+    private String ruta;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", insertable = false, updatable = false)

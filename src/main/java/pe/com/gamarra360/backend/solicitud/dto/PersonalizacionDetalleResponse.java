@@ -26,7 +26,8 @@ public record PersonalizacionDetalleResponse(
         Double costoPersonalizacion,
         Double total,
         PropuestaInfo propuesta,
-        PedidoInfo pedido
+        PedidoInfo pedido,
+        Double precioDeseado
 ) {
     public record PropuestaInfo(
             Long idRespuesta,

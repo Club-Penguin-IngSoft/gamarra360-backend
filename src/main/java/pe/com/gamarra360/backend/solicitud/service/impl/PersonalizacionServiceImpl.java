@@ -18,6 +18,7 @@ import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionComercianteResumen
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionDetalleResponse;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionResumen;
+import pe.com.gamarra360.backend.solicitud.dto.ContraPropuestaRequest;
 import pe.com.gamarra360.backend.solicitud.dto.RespuestaPersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.entity.ItemPersonalizado;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
@@ -33,6 +34,7 @@ import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.com.gamarra360.backend.usuario.service.NotificacionService;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,7 +42,7 @@ import java.util.Optional;
 @Service
 @Slf4j
 public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizacion, Long> implements PersonalizacionService {
-
+    private final NotificacionService notificacionService;
     private final PersonalizacionRepository personalizacionRepository;
     private final ComercianteRepository comercianteRepository;
     private final RespuestaSolicitudRepository respuestaSolicitudRepository;
@@ -49,7 +51,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
     private final ItemPersonalizadoRepository itemPersonalizadoRepository;
     private final ClienteRepository clienteRepository;
 
-    public PersonalizacionServiceImpl(PersonalizacionRepository repository,
+    public PersonalizacionServiceImpl(NotificacionService notificacionService, PersonalizacionRepository repository,
                                        ComercianteRepository comercianteRepository,
                                        RespuestaSolicitudRepository respuestaSolicitudRepository,
                                        DetallePedidoRepository detallePedidoRepository,
@@ -57,6 +59,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                                        ItemPersonalizadoRepository itemPersonalizadoRepository,
                                        ClienteRepository clienteRepository) {
         super(repository, "Personalizacion");
+        this.notificacionService = notificacionService;
         this.personalizacionRepository = repository;
         this.comercianteRepository = comercianteRepository;
         this.respuestaSolicitudRepository = respuestaSolicitudRepository;
@@ -96,6 +99,16 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         p.setCantidad(request.getCantidad() != null ? request.getCantidad() : 1);
 
         Personalizacion saved = personalizacionRepository.save(p);
+        notificacionService.crearNotificacion(
+                request.getVendedorId(),              // receptor (vendedor)
+                clienteId,                            // actor (quien lo hizo)
+                "Nueva personalización recibida",
+                "PERSONALIZACION",
+                saved.getId(),
+                "PERSONALIZACION",
+                saved.getEstado() != null ? saved.getEstado().name() : "PENDIENTE",
+                "/vendedor/personalizacion/" + saved.getId()
+        );
         log.info("Solicitud de personalización creada con ID {}", saved.getId());
         return saved;
     }
@@ -136,6 +149,11 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         item.setDescripcion(p.getDescripcion());
         item.setRespuestaId(respuesta.getIdRespuesta());
         itemPersonalizadoRepository.save(item);
+
+        VarianteProducto variante = p.getVarianteProducto();
+        if (variante != null && variante.getStock() != null && p.getCantidad() != null && p.getCantidad() > 0) {
+            variante.setStock(Math.max(0, variante.getStock() - p.getCantidad()));
+        }
 
         p.aceptar();
         personalizacionRepository.save(p);
@@ -209,6 +227,61 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         return toComercianteDetalle(p);
     }
 
+    @Override
+    @Transactional
+    public void cancelarPorCliente(Long id, Integer clienteId) {
+        Personalizacion p = obtenerYValidarPropietario(id, clienteId);
+        if (p.getEstado() == EstadoSolicitud.ACEPTADA) {
+            throw new ConflictoNegocioException("No se puede cancelar una personalización ya aceptada.");
+        }
+        if (p.getEstado() == EstadoSolicitud.RECHAZADA) {
+            throw new ConflictoNegocioException("La personalización ya está cancelada.");
+        }
+        p.cancelar();
+        personalizacionRepository.save(p);
+        log.info("Personalización {} cancelada por cliente {}", id, clienteId);
+    }
+
+    @Override
+    @Transactional
+    public void cancelarPorVendedor(Long id, Integer vendedorId) {
+        Personalizacion p = personalizacionRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Personalizacion", id));
+        if (!vendedorId.equals(p.getVendedorId())) {
+            throw new AccessDeniedException("La personalización no pertenece al comerciante autenticado.");
+        }
+        if (p.getEstado() == EstadoSolicitud.ACEPTADA) {
+            throw new ConflictoNegocioException("No se puede cancelar una personalización ya aceptada.");
+        }
+        if (p.getEstado() == EstadoSolicitud.RECHAZADA) {
+            throw new ConflictoNegocioException("La personalización ya está cancelada.");
+        }
+        p.cancelar();
+        personalizacionRepository.save(p);
+        log.info("Personalización {} cancelada por vendedor {}", id, vendedorId);
+    }
+
+    @Override
+    @Transactional
+    public PersonalizacionDetalleResponse contraProponerCliente(Long id, ContraPropuestaRequest request, Integer clienteId) {
+        Personalizacion p = obtenerYValidarPropietario(id, clienteId);
+        if (p.getEstado() != EstadoSolicitud.RESPONDIDA) {
+            throw new ConflictoNegocioException("Solo se puede enviar una contrapropuesta en estado RESPONDIDA.");
+        }
+        respuestaSolicitudRepository.findByIdSolicitud(id)
+                .ifPresent(r -> respuestaSolicitudRepository.eliminarPorId(r.getIdRespuesta()));
+        if (request.getEspecificacion() != null && !request.getEspecificacion().isBlank()) {
+            p.setDescripcion(request.getEspecificacion());
+        }
+        if (request.getPrecioDeseado() != null) {
+            p.setPrecioDeseado(request.getPrecioDeseado());
+        }
+        p.setEstado(EstadoSolicitud.PENDIENTE);
+        Personalizacion saved = personalizacionRepository.save(p);
+        log.info("Contrapropuesta enviada en personalización {} por cliente {}", id, clienteId);
+        return toDetalle(saved);
+    }
+
     private Personalizacion obtenerYValidarPropietario(Long id, Integer clienteId) {
         Personalizacion p = personalizacionRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Personalizacion", id));
@@ -223,7 +296,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         Producto producto = v != null ? v.getProducto() : null;
 
         Comerciante comerciante = buscarComerciante(p.getVendedorId());
-        String nombreTienda = comerciante != null ? comerciante.getNombreTienda() : null;
+        String nombreTienda = comerciante != null && comerciante.getTienda() != null ? comerciante.getTienda().getNombreComercial() : null;
         String fotoTienda = comerciante != null && comerciante.getTienda() != null ? comerciante.getTienda().getFoto() : null;
 
         String pedidoEstado = buscarPedido(p.getId())
@@ -254,7 +327,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         Producto producto = v != null ? v.getProducto() : null;
 
         Comerciante comerciante = buscarComerciante(p.getVendedorId());
-        String nombreTienda = comerciante != null ? comerciante.getNombreTienda() : null;
+        String nombreTienda = comerciante != null && comerciante.getTienda() != null ? comerciante.getTienda().getNombreComercial() : null;
         String fotoTienda = comerciante != null && comerciante.getTienda() != null ? comerciante.getTienda().getFoto() : null;
 
         int cantidad = p.getCantidad() != null ? p.getCantidad() : 1;
@@ -311,13 +384,14 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                 costoPersonalizacion,
                 total,
                 propuestaInfo,
-                pedidoInfo
+                pedidoInfo,
+                p.getPrecioDeseado()
         );
     }
 
     private PersonalizacionComercianteResumen toComercianteResumen(Personalizacion p) {
         Cliente cliente = p.getClienteId() != null ? clienteRepository.findById(p.getClienteId()).orElse(null) : null;
-        String nombreCliente = cliente != null ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null;
+        String nombreCliente = cliente != null ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null;
         String emailCliente = cliente != null ? cliente.getEmail() : null;
 
         String pedidoEstado = buscarPedido(p.getId())
@@ -340,11 +414,17 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         Producto producto = v != null ? v.getProducto() : null;
 
         Cliente cliente = p.getClienteId() != null ? clienteRepository.findById(p.getClienteId()).orElse(null) : null;
-        String nombreCliente = cliente != null ? trimNombre(cliente.getNombre(), cliente.getApellido()) : null;
+        String nombreCliente = cliente != null ? trimNombre(cliente.getNombres(), cliente.getPrimerApellido()) : null;
         String emailCliente = cliente != null ? cliente.getEmail() : null;
         int totalPedidosCliente = pedidoRepository
                 .findByClienteIdAndVendedorIdOrderByFechaDesc(p.getClienteId(), p.getVendedorId())
                 .size();
+
+        int cantidad = p.getCantidad() != null ? p.getCantidad() : 1;
+        Double precioUnitario = precioUnitario(v, producto);
+        Double descuentoUnitario = calcularDescuentoUnitario(producto, precioUnitario, cantidad);
+        Double precioBase = precioUnitario != null ? precioUnitario * cantidad : null;
+        Double descuentos = precioBase != null ? descuentoUnitario * cantidad : null;
 
         RespuestaSolicitud respuesta = respuestaSolicitudRepository.findByIdSolicitud(p.getId()).orElse(null);
         PersonalizacionComercianteDetalle.PropuestaInfo propuestaInfo = respuesta != null
@@ -372,7 +452,10 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                 p.getUrlLogo(),
                 p.getTipoPersonalizacion() != null ? p.getTipoPersonalizacion().name() : null,
                 p.getDescripcion(),
-                propuestaInfo
+                precioBase,
+                descuentos,
+                propuestaInfo,
+                p.getPrecioDeseado()
         );
     }
 
@@ -415,16 +498,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
     }
 
     private Double calcularDescuentoUnitario(Producto producto, Double precioUnitario, Integer cantidad) {
-        if (producto == null || precioUnitario == null || cantidad == null || producto.getDescuentosVolumen() == null) {
-            return 0.0;
-        }
-        return producto.getDescuentosVolumen().stream()
-                .filter(d -> Boolean.TRUE.equals(d.getActivo()))
-                .filter(d -> d.getCantidadMinima() == null || cantidad >= d.getCantidadMinima())
-                .filter(d -> d.getCantidadMaxima() == null || cantidad <= d.getCantidadMaxima())
-                .map(d -> precioUnitario * (d.getPorcentajeDescuento() / 100.0))
-                .max(Double::compareTo)
-                .orElse(0.0);
+        return 0.0;
     }
 
     private String imagenPrincipal(Producto producto) {

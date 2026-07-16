@@ -5,11 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import pe.com.gamarra360.backend.catalogo.dto.StockResponse;
 import pe.com.gamarra360.backend.catalogo.dto.StockUpdateRequest;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
+import pe.com.gamarra360.backend.security.UsuarioPrincipal;
 
 import java.util.Map;
 import pe.com.gamarra360.backend.catalogo.service.VarianteProductoService;
@@ -57,9 +59,12 @@ public class VarianteProductoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('VENDEDOR')")
-    public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Integer id,
+            Authentication auth) {
         log.info("DELETE /api/v1/variantes-producto/{}", id);
-        service.eliminar(id);
+        Integer comercianteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        service.eliminarVariante(id, comercianteId);
         return ResponseEntity.noContent().build();
     }
 

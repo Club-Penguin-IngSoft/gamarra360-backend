@@ -1,10 +1,11 @@
 package pe.com.gamarra360.backend.usuario.service;
-
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import pe.com.gamarra360.backend.admin.service.VendedorRegistradoEvent;
 import pe.com.gamarra360.backend.enums.ProveedorAuth;
 import pe.com.gamarra360.backend.enums.RolEnum;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
@@ -18,6 +19,8 @@ import pe.com.gamarra360.backend.usuario.entity.Admin;
 import pe.com.gamarra360.backend.usuario.entity.Cliente;
 import pe.com.gamarra360.backend.usuario.entity.Comerciante;
 import pe.com.gamarra360.backend.usuario.entity.Usuario;
+import pe.com.gamarra360.backend.catalogo.entity.Tienda;
+import pe.com.gamarra360.backend.catalogo.repository.TiendaRepository;
 import pe.com.gamarra360.backend.usuario.repository.UsuarioRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -38,12 +41,19 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-
-    public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, JwtService jwtService, AuthenticationManager authenticationManager) {
+    private final TiendaRepository tiendaRepository;
+    private final NotificacionService notificacionService;
+    private final ApplicationEventPublisher eventPublisher;
+    public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
+                       JwtService jwtService, AuthenticationManager authenticationManager,
+                       TiendaRepository tiendaRepository, NotificacionService notificacionService, ApplicationEventPublisher eventPublisher) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
+        this.tiendaRepository = tiendaRepository;
+        this.notificacionService = notificacionService;
+        this.eventPublisher = eventPublisher;
     }
 
     public AuthResponse googleLogin(GoogleLoginRequest request) {
@@ -60,6 +70,10 @@ public class AuthService {
             );
         }
         Usuario usuario = optUsuario.get();
+        if (Boolean.FALSE.equals(usuario.getActivo())) {
+            log.info("USUARIO DESACTIVADO intentó iniciar sesión con Google: {}", email);
+            return new AuthResponse(null, usuario.getUsuarioId(), email, usuario.getRol().name(), false, "DESACTIVADO");
+        }
         //Verificar estado si es VENDEDOR
         if (RolEnum.VENDEDOR.equals(usuario.getRol())) {
             Comerciante comerciante = (Comerciante) usuario;
@@ -105,12 +119,13 @@ public class AuthService {
         usuario.setContrasenha(passwordEncoder.encode(request.getContrasenha()));
         usuario.setDni(request.getDni());
         usuario.setTelefono(request.getTelefono());
+        usuario.setTipoDocumento(request.getTipoDocumento());
         usuario.setRol(request.getRol());
         usuario.setActivo(true);
         usuario.setProveedorAuth(ProveedorAuth.LOCAL);
         Usuario guardado = usuarioRepository.save(usuario);
         String token = jwtService.generarToken(new UsuarioPrincipal(guardado));
-        return new AuthResponse(token, guardado.getUsuarioId(), guardado.getEmail(),guardado.getNombres() ,guardado.getRol().name(),false);
+        return new AuthResponse(token, guardado.getUsuarioId(), guardado.getEmail(), guardado.getNombres(), guardado.getRol().name(), false);
     }
 
     public AuthResponse registrarGoogle(RegistroUsuarioRequest request) {
@@ -126,9 +141,6 @@ public class AuthService {
         usuario.setActivo(true);
         usuario.setTipoDocumento(request.getTipoDocumento());
         usuario.setProveedorAuth(ProveedorAuth.GOOGLE);
-        //Cliente
-        usuario.setNombre(request.getNombres());
-        usuario.setApellido(request.getPrimerApellido());
         Usuario guardado = usuarioRepository.save(usuario);
         String token = jwtService.generarToken(new UsuarioPrincipal(guardado));
         return new AuthResponse(
@@ -171,6 +183,32 @@ public class AuthService {
         usuario.setApellidoComerciante(request.getPrimerApellido());
         usuario.setAprobado(false);//aprueba o rechaza
         Usuario savedUser = usuarioRepository.save(usuario);
+        notificacionService.crearNotificacion(
+                savedUser.getUsuarioId(),   // receptor (admin o comerciante según flujo)
+                savedUser.getUsuarioId(),   // actor (quien se registra)
+                "Tu registro como comerciante está en revisión",
+                "COMERCIANTE",
+                savedUser.getUsuarioId().longValue(),
+                "USUARIO",
+                "PENDIENTE",
+                "/perfil"
+        );
+        // Crear Tienda desde el registro para poder persistir los datos de tienda inmediatamente.
+        // aprobar() la reutilizará en lugar de crear una nueva.
+        Tienda tienda = new Tienda();
+        tienda.setIdComerciante(savedUser.getUsuarioId());
+        tienda.setNombreComercial(request.getNombreTienda() != null
+                ? request.getNombreTienda()
+                : request.getRazonSocial());
+        tienda.setInformacion(request.getInformacion());
+        tienda.setFoto(request.getLogoUrl());
+        tienda.setPiso(request.getPiso());
+        tienda.setStand(request.getStand());
+        tienda.setGaleria(request.getGaleria());
+        tienda.setOfreceEnvioDomicilio(Boolean.TRUE.equals(request.getOfreceEnvioDomicilio()));
+        tienda.setVerificada(false);
+        tiendaRepository.save(tienda);
+
         String token = jwtService.generarToken(new UsuarioPrincipal(savedUser));
         return new AuthResponse(
                 token,
@@ -184,19 +222,45 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         log.info("Login de usuario");
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasenha()));
+
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new DatosInvalidosException("Credenciales invalidas."));
+
+        // Si el usuario se registró con Google, no puede usar login con contraseña
+        if (ProveedorAuth.GOOGLE.equals(usuario.getProveedorAuth())) {
+            log.info("Intento de login LOCAL para cuenta registrada con Google: {}", request.getEmail());
+            throw new DatosInvalidosException("Este correo está registrado con Google. Inicia sesión con el botón de Google.");
+        }
+
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasenha()));
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            log.info("USUARIO DESACTIVADO intentó iniciar sesión: {}", request.getEmail());
+            return new AuthResponse(null, usuario.getUsuarioId(), usuario.getEmail(), usuario.getRol().name(), false, "DESACTIVADO");
+        }
+
+        // Verificar estado si es VENDEDOR
+        if (RolEnum.VENDEDOR.equals(usuario.getRol())) {
+            Comerciante comerciante = (Comerciante) usuario;
+
+            if (!Boolean.TRUE.equals(comerciante.getVerificado())) {
+                log.info("COMERCIANTE PENDIENTE DE APROBACIÓN: {}", request.getEmail());
+                return new AuthResponse(null, usuario.getUsuarioId(), usuario.getEmail(), "VENDEDOR", false, "PENDIENTE");
+            }
+
+            if (!Boolean.TRUE.equals(comerciante.getAprobado())) {
+                log.info("COMERCIANTE RECHAZADO: {}", request.getEmail());
+                return new AuthResponse(null, usuario.getUsuarioId(), usuario.getEmail(), "VENDEDOR", false, "RECHAZADO");
+            }
+        }
+
         String token = jwtService.generarToken(new UsuarioPrincipal(usuario));
         return new AuthResponse(token, usuario.getUsuarioId(), usuario.getEmail(), usuario.getNombres(), usuario.getRol().name(), false);
     }
 
     private Usuario crearUsuarioPorRol(RegistroUsuarioRequest request) {
         if (request.getRol() == RolEnum.CLIENTE) {
-            Cliente cliente = new Cliente();
-            cliente.setNombre(request.getNombre());
-            cliente.setApellido(request.getApellido());
-            return cliente;
+            return new Cliente();
         }
         if (request.getRol() == RolEnum.VENDEDOR) {
             Comerciante comerciante = new Comerciante();
@@ -234,5 +298,69 @@ public class AuthService {
             log.error("ERROR VALIDANDO GOOGLE TOKEN", e);
             throw new DatosInvalidosException("Error validando token de Google: " + e.getMessage());
         }
+    }
+    @Transactional
+    public AuthResponse registrarComerciante(RegistroUsuarioRequest request) {
+        log.info("Registro comerciante normal (sin Google): {}", request.getEmail());
+        if (usuarioRepository.existsByEmail(request.getEmail())) {
+            throw new DatosInvalidosException("El correo ya está registrado.");
+        }
+        // 1. Usuario
+        Comerciante usuario = new Comerciante();
+        usuario.setNombres(request.getNombres());
+        usuario.setPrimerApellido(request.getPrimerApellido());
+        usuario.setSegundoApellido(request.getSegundoApellido());
+        usuario.setEmail(request.getEmail());
+        usuario.setContrasenha(passwordEncoder.encode(request.getContrasenha()));
+        usuario.setDni(request.getDni());
+        usuario.setTelefono(request.getTelefono());
+        usuario.setRol(RolEnum.VENDEDOR);
+        usuario.setActivo(true);
+        usuario.setProveedorAuth(ProveedorAuth.LOCAL);
+        // 2. Comerciante
+        usuario.setRuc(request.getRuc());
+        usuario.setRazonSocial(request.getRazonSocial());
+        usuario.setVerificado(false);
+        usuario.setTipoDocumento(request.getTipoDocumento());
+        usuario.setNombreTienda(request.getNombreTienda());
+        usuario.setLogoUrl(request.getLogoUrl());
+        usuario.setNombreComerciante(request.getNombres());
+        usuario.setApellidoComerciante(request.getPrimerApellido());
+        usuario.setAprobado(false);
+        Usuario savedUser = usuarioRepository.save(usuario);
+        notificacionService.crearNotificacion(
+                savedUser.getUsuarioId(),              // receptor (puede ser admin o el mismo usuario)
+                savedUser.getUsuarioId(),              // actor (el que se registra)
+                "Tu registro como comerciante está en revisión",
+                "COMERCIANTE",
+                savedUser.getUsuarioId().longValue(),
+                "USUARIO",
+                "PENDIENTE",
+                "/perfil"
+        );
+        // Crear Tienda desde el registro, igual que en el flujo de Google
+        Tienda tienda = new Tienda();
+        tienda.setIdComerciante(savedUser.getUsuarioId());
+        tienda.setNombreComercial(request.getNombreTienda() != null
+                ? request.getNombreTienda()
+                : request.getRazonSocial());
+        tienda.setInformacion(request.getInformacion());
+        tienda.setFoto(request.getLogoUrl());
+        tienda.setPiso(request.getPiso());
+        tienda.setStand(request.getStand());
+        tienda.setGaleria(request.getGaleria());
+        tienda.setOfreceEnvioDomicilio(Boolean.TRUE.equals(request.getOfreceEnvioDomicilio()));
+        tienda.setVerificada(false);
+        tiendaRepository.save(tienda);
+
+        String token = jwtService.generarToken(new UsuarioPrincipal(savedUser));
+        return new AuthResponse(
+                token,
+                savedUser.getUsuarioId(),
+                savedUser.getEmail(),
+                savedUser.getNombres(),
+                savedUser.getRol().name(),
+                false
+        );
     }
 }

@@ -16,13 +16,20 @@ public class ProductoResponse {
     private Double precioFinal;
     private Boolean esPersonalizable;
     private Boolean activo;
+    private Boolean comercianteActivo;
     private Integer idTienda;
     private Integer idComerciante;
     private String nombreTienda;
+    private String logoTienda;
     private Integer idCategoria;
     private String nombreCategoria;
     private Integer idTipoProducto;
     private String nombreTipoProducto;
+    private String materialPrincipal;
+    private Integer idMaterial;
+    private List<String> materiales;
+    private Boolean tiendaOfreceEnvio;
+    private OfertaResumenDto oferta;
     private List<ImagenDto> imagenes;
     private List<EspecificacionDto> especificaciones;
     private List<VarianteDto> variantes;
@@ -49,7 +56,10 @@ public class ProductoResponse {
         private Integer idVariante;
         private String sku;
         private Integer stock;
+        private Integer minimoStock;
         private Double precioAjustado;
+        /** Precio listo para mostrar: (precioAjustado ?? precioBase) con oferta/volumen aplicados. */
+        private Double precioEfectivo;
         private Boolean disponible;
         private Integer idTalla;
         private Integer idColor;

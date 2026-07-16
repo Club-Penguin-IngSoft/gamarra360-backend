@@ -6,9 +6,14 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.*;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import pe.com.gamarra360.backend.catalogo.dto.EspecificacionProductoDto;
+import pe.com.gamarra360.backend.catalogo.dto.FiltrosCatalogoDto;
 import pe.com.gamarra360.backend.catalogo.dto.ImagenRequest;
+import pe.com.gamarra360.backend.catalogo.dto.OfertaResumenDto;
 import pe.com.gamarra360.backend.catalogo.dto.OpcionesFiltroDto;
 import pe.com.gamarra360.backend.catalogo.dto.PaginaResponse;
 import pe.com.gamarra360.backend.catalogo.dto.ProductoRequest;
@@ -18,6 +23,7 @@ import pe.com.gamarra360.backend.catalogo.repository.*;
 import pe.com.gamarra360.backend.catalogo.service.ProductoService;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
 import pe.com.gamarra360.backend.enums.EstadoSolicitud;
+import pe.com.gamarra360.backend.enums.TipoDescuento;
 import pe.com.gamarra360.backend.exception.ConflictoNegocioException;
 import pe.com.gamarra360.backend.exception.DatosInvalidosException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
@@ -27,6 +33,7 @@ import pe.com.gamarra360.backend.solicitud.repository.CotizacionCatalogoReposito
 import pe.com.gamarra360.backend.usuario.entity.Comerciante;
 import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -47,6 +54,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
     private final ColorRepository colorRepository;
     private final TallaRepository tallaRepository;
     private final EspecificacionRepository especificacionRepository;
+    private final MaterialFiltroRepository materialFiltroRepository;
 
     public ProductoServiceImpl(
             ProductoRepository productoRepository,
@@ -60,7 +68,8 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             CotizacionCatalogoRepository cotizacionCatalogoRepository,
             ColorRepository colorRepository,
             TallaRepository tallaRepository,
-            EspecificacionRepository especificacionRepository) {
+            EspecificacionRepository especificacionRepository,
+            MaterialFiltroRepository materialFiltroRepository) {
         super(productoRepository, "Producto");
         this.productoRepository = productoRepository;
         this.comercianteRepository = comercianteRepository;
@@ -74,6 +83,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         this.colorRepository = colorRepository;
         this.tallaRepository = tallaRepository;
         this.especificacionRepository = especificacionRepository;
+        this.materialFiltroRepository = materialFiltroRepository;
     }
 
     @Override
@@ -120,7 +130,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         List<String> materiales = especificacionRepository.findDistinctMateriales();
 
         List<String> tiposProducto = tipoProductoRepository.findAll().stream()
-                .map(tp -> tp.getNombre())
+                .map(TipoProducto::getNombre)
                 .filter(Objects::nonNull)
                 .distinct()
                 .sorted()
@@ -202,6 +212,10 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         producto.setActivo(true);
         producto.setCategoria(categoria);
         producto.setTipoProducto(tipoProducto);
+        if (request.getIdMaterialFiltro() != null) {
+            producto.setMaterialFiltro(materialFiltroRepository.findById(request.getIdMaterialFiltro())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Material no encontrado con id " + request.getIdMaterialFiltro())));
+        }
 
         Producto saved = productoRepository.save(producto);
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), saved);
@@ -239,6 +253,12 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         producto.setEsPersonalizable(Boolean.TRUE.equals(request.getEsPersonalizable()));
         producto.setCategoria(categoria);
         producto.setTipoProducto(tipoProducto);
+        if (request.getIdMaterialFiltro() != null) {
+            producto.setMaterialFiltro(materialFiltroRepository.findById(request.getIdMaterialFiltro())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Material no encontrado con id " + request.getIdMaterialFiltro())));
+        } else {
+            producto.setMaterialFiltro(null);
+        }
 
         imagenProductoRepository.deleteAll(imagenProductoRepository.findByIdProducto(idProducto));
         List<ImagenProducto> savedImages = guardarImagenes(request.getImagenes(), producto);
@@ -296,16 +316,157 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PaginaResponse<ProductoResponse> listarConFiltros(FiltrosCatalogoDto filtros) {
+        int page = filtros.getPage() != null ? filtros.getPage() : 0;
+        int size = filtros.getSize() != null ? filtros.getSize() : 12;
+        Sort sort = resolverOrden(filtros.getSort());
+        var pageable = PageRequest.of(page, size, sort);
+
+        var resultado = productoRepository.findAll(buildSpec(filtros), pageable);
+        List<ProductoResponse> contenido = resultado.getContent().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        return new PaginaResponse<>(contenido, page, resultado.getTotalPages(), resultado.getTotalElements());
+    }
+
+    private Sort resolverOrden(String sort) {
+        if ("PRICE_ASC".equals(sort))  return Sort.by(Sort.Direction.ASC,  "precioBase");
+        if ("PRICE_DESC".equals(sort)) return Sort.by(Sort.Direction.DESC, "precioBase");
+        return Sort.by(Sort.Direction.DESC, "idProducto");
+    }
+
+    private Specification<Producto> buildSpec(FiltrosCatalogoDto f) {
+        return (root, query, cb) -> {
+            List<Predicate> predicados = new ArrayList<>();
+
+            // Visibilidad del catálogo público
+            Join<Producto, ?> tienda = root.join("tienda", JoinType.LEFT);
+            Join<?, ?>  comerciante  = tienda.join("comerciante", JoinType.LEFT);
+            predicados.add(cb.isTrue(root.get("activo")));
+            predicados.add(cb.isTrue(tienda.get("verificada")));
+            predicados.add(cb.isTrue(comerciante.get("verificado")));
+            predicados.add(cb.isTrue(comerciante.get("activo")));
+
+            // Tipos de producto (ManyToOne → sin duplicados)
+            if (f.getTiposProducto() != null && !f.getTiposProducto().isEmpty()) {
+                Join<Producto, ?> tp = root.join("tipoProducto", JoinType.LEFT);
+                predicados.add(tp.get("nombre").in(f.getTiposProducto()));
+            }
+
+            // Categorías (ManyToOne → sin duplicados)
+            if (f.getCategorias() != null && !f.getCategorias().isEmpty()) {
+                Join<Producto, ?> cat = root.join("categoria", JoinType.LEFT);
+                predicados.add(cat.get("nombreCategoria").in(f.getCategorias()));
+            }
+
+            // Búsqueda por keyword
+            if (f.getQ() != null && !f.getQ().isBlank()) {
+                String like = "%" + f.getQ().toLowerCase() + "%";
+                predicados.add(cb.or(
+                        cb.like(cb.lower(root.get("nombre")),             like),
+                        cb.like(cb.lower(root.get("descripcion")),        like),
+                        cb.like(cb.lower(tienda.get("nombreComercial")),  like)
+                ));
+            }
+
+            // Rango de precio efectivo (Opción B):
+            // Un producto aparece si AL MENOS UNA variante disponible con stock tiene
+            // su precio efectivo dentro del rango.
+            // precio_efectivo = COALESCE(v.precioAjustado, p.precioBase) con oferta activa aplicada.
+            if (f.getPrecioMin() != null || f.getPrecioMax() != null) {
+                LocalDateTime ahora = LocalDateTime.now();
+
+                Subquery<Integer> subVariante = query.subquery(Integer.class);
+                Root<VarianteProducto> vRootP = subVariante.from(VarianteProducto.class);
+                Join<VarianteProducto, Producto> vpJoin = vRootP.join("producto", JoinType.INNER);
+                Join<Producto, Oferta> voJoin = vpJoin.join("oferta", JoinType.LEFT);
+
+                // Oferta vigente: activa y dentro del rango de fechas
+                Predicate ofVigente = cb.and(
+                        cb.isNotNull(voJoin.get("idOferta")),
+                        cb.isTrue(voJoin.get("activa")),
+                        cb.lessThanOrEqualTo(voJoin.<LocalDateTime>get("fechaInicio"), ahora),
+                        cb.greaterThanOrEqualTo(voJoin.<LocalDateTime>get("fechaFin"), ahora)
+                );
+
+                // COALESCE(v.precioAjustado, p.precioBase)
+                Expression<Number> baseV = cb.<Number>selectCase()
+                        .when(cb.isNotNull(vRootP.get("precioAjustado")),
+                              vRootP.<Number>get("precioAjustado"))
+                        .otherwise(vpJoin.<Number>get("precioBase"));
+
+                // precio_efectivo = CASE
+                //   WHEN oferta PORCENTAJE → base * (1 - valorDescuento/100)
+                //   WHEN oferta MONTO_FIJO → base - valorDescuento
+                //   ELSE base
+                Expression<Number> pct          = cb.quot(voJoin.<Number>get("valorDescuento"), cb.literal(Double.valueOf(100.0)));
+                Expression<Number> precioConPct  = cb.diff(baseV, cb.prod(baseV, pct));
+                Expression<Number> precioConFijo = cb.diff(baseV, voJoin.<Number>get("valorDescuento"));
+
+                Expression<Number> precioEfV = cb.<Number>selectCase()
+                        .when(cb.and(ofVigente, cb.equal(voJoin.get("tipoDescuento"), TipoDescuento.PORCENTAJE)), precioConPct)
+                        .when(ofVigente, precioConFijo)
+                        .otherwise(baseV);
+
+                List<Predicate> varPreds = new ArrayList<>();
+                varPreds.add(cb.equal(vRootP.get("producto"), root));
+                // NULL se interpreta como "no explícitamente inactiva" → disponible
+                varPreds.add(cb.or(
+                        cb.isNull(vRootP.<Boolean>get("disponible")),
+                        cb.isTrue(vRootP.<Boolean>get("disponible"))
+                ));
+                varPreds.add(cb.greaterThan(vRootP.<Integer>get("stock"), 0));
+                if (f.getPrecioMin() != null) varPreds.add(cb.ge(precioEfV, f.getPrecioMin()));
+                if (f.getPrecioMax() != null) varPreds.add(cb.le(precioEfV, f.getPrecioMax()));
+
+                subVariante.select(cb.literal(1)).where(varPreds.toArray(new Predicate[0]));
+                predicados.add(cb.exists(subVariante));
+            }
+
+            // Color — subquery para evitar duplicados por OneToMany
+            if (f.getColor() != null && !f.getColor().isBlank()) {
+                Subquery<Integer> sub = query.subquery(Integer.class);
+                Root<VarianteProducto> vRoot = sub.from(VarianteProducto.class);
+                Join<?, ?> colorJoin = vRoot.join("color", JoinType.LEFT);
+                sub.select(vRoot.get("idVariante")).where(cb.and(
+                        cb.equal(vRoot.get("producto"), root),
+                        cb.equal(cb.lower(colorJoin.get("nombre")), f.getColor().toLowerCase())
+                ));
+                predicados.add(cb.exists(sub));
+            }
+
+            // Tallas — subquery para evitar duplicados por OneToMany
+            if (f.getTallas() != null && !f.getTallas().isEmpty()) {
+                Subquery<Integer> sub = query.subquery(Integer.class);
+                Root<VarianteProducto> vRoot = sub.from(VarianteProducto.class);
+                Join<?, ?> tallaJoin = vRoot.join("talla", JoinType.LEFT);
+                sub.select(vRoot.get("idVariante")).where(cb.and(
+                        cb.equal(vRoot.get("producto"), root),
+                        tallaJoin.get("talla").in(f.getTallas())
+                ));
+                predicados.add(cb.exists(sub));
+            }
+
+            return cb.and(predicados.toArray(new Predicate[0]));
+        };
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private Double calcularPrecioFinal(Double precioBase, List<DescuentoVolumen> descuentos) {
+    private boolean esOfertaActiva(Oferta oferta) {
+        if (oferta == null || !Boolean.TRUE.equals(oferta.getActiva())) return false;
+        LocalDateTime now = LocalDateTime.now();
+        return !now.isBefore(oferta.getFechaInicio()) && !now.isAfter(oferta.getFechaFin());
+    }
+
+    private Double calcularPrecioConOferta(Double precioBase, Oferta oferta) {
         if (precioBase == null) return null;
-        if (descuentos == null || descuentos.isEmpty()) return precioBase;
-        return descuentos.stream()
-                .filter(d -> Boolean.TRUE.equals(d.getActivo()))
-                .min(Comparator.comparing(DescuentoVolumen::getCantidadMinima))
-                .map(d -> precioBase * (1.0 - d.getPorcentajeDescuento() / 100.0))
-                .orElse(precioBase);
+        return switch (oferta.getTipoDescuento()) {
+            case PORCENTAJE -> precioBase - (precioBase * (oferta.getValorDescuento() / 100.0));
+            case MONTO_FIJO -> Math.max(0.0, precioBase - oferta.getValorDescuento());
+        };
     }
 
     private List<ImagenProducto> guardarImagenes(List<ImagenRequest> imagenes, Producto producto) {
@@ -350,12 +511,30 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setNombre(p.getNombre());
         r.setDescripcion(p.getDescripcion());
         r.setPrecioBase(p.getPrecioBase());
-        r.setPrecioFinal(calcularPrecioFinal(p.getPrecioBase(), p.getDescuentosVolumen()));
+
+        Oferta oferta = p.getOferta();
+        if (esOfertaActiva(oferta)) {
+            r.setPrecioFinal(calcularPrecioConOferta(p.getPrecioBase(), oferta));
+            r.setOferta(new OfertaResumenDto(oferta.getTitulo(), oferta.getTipoDescuento(), oferta.getValorDescuento()));
+        } else {
+            r.setPrecioFinal(p.getPrecioBase());
+            r.setOferta(null);
+        }
+
         r.setEsPersonalizable(p.getEsPersonalizable());
         r.setActivo(p.getActivo());
         r.setIdTienda(p.getIdTienda());
         r.setIdComerciante(p.getTienda() != null ? p.getTienda().getIdComerciante() : null);
         r.setNombreTienda(nombreTienda);
+        r.setLogoTienda(p.getTienda() != null ? p.getTienda().getFoto() : null);
+
+        Integer idComerciante = p.getTienda() != null ? p.getTienda().getIdComerciante() : null;
+        Boolean comercianteActivo = idComerciante != null
+                ? comercianteRepository.findById(idComerciante)
+                  .map(c -> c.getActivo())
+                  .orElse(true)
+                : true;
+        r.setComercianteActivo(comercianteActivo);
 
         if (p.getCategoria() != null) {
             r.setIdCategoria(p.getCategoria().getIdCategoria());
@@ -374,6 +553,17 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             return d;
         }).collect(Collectors.toList()));
 
+        r.setMaterialPrincipal(p.getMaterialFiltro() != null ? p.getMaterialFiltro().getNombre() : null);
+        r.setIdMaterial(p.getMaterialFiltro() != null ? p.getMaterialFiltro().getIdMaterial() : null);
+
+        r.setMateriales(especs.stream()
+                .filter(e -> "material".equalsIgnoreCase(e.getNombre()))
+                .map(Especificacion::getDescripcion)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList()));
+
+        r.setTiendaOfreceEnvio(p.getTienda() != null ? p.getTienda().getOfreceEnvioDomicilio() : null);
+
         r.setEspecificaciones(especs.stream().map(e -> {
             ProductoResponse.EspecificacionDto d = new ProductoResponse.EspecificacionDto();
             d.setIdEspecificacion(e.getIdEspecificacion());
@@ -387,6 +577,7 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setIdVariante(v.getIdVariante());
             d.setSku(v.getSku());
             d.setStock(v.getStock());
+            d.setMinimoStock(v.getMinimoStock());
             d.setPrecioAjustado(v.getPrecioAjustado());
             d.setDisponible(v.getDisponible());
             d.setIdTalla(v.getTalla() != null ? v.getTalla().getIdTalla() : null);
@@ -395,6 +586,10 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setColor(v.getColor() != null ? v.getColor().getNombre() : null);
             d.setColorHex(v.getColor() != null ? v.getColor().getCodHex() : null);
             d.setImagenUrl(v.getImagenUrl());
+            Double baseVariante = v.getPrecioAjustado() != null ? v.getPrecioAjustado() : p.getPrecioBase();
+            d.setPrecioEfectivo(esOfertaActiva(oferta)
+                    ? calcularPrecioConOferta(baseVariante, oferta)
+                    : baseVariante);
             return d;
         }).collect(Collectors.toList()));
 

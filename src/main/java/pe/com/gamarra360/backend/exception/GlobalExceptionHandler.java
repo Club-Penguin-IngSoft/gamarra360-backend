@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  *  - 400 → MethodArgumentNotValidException, DatosInvalidosException
  *  - 403 → AccessDeniedException, DisabledException
  *  - 404 → RecursoNoEncontradoException
- *  - 409 → ConflictoNegocioException
+ *  - 409 → ConflictoNegocioException, OfertaConflictoException (con detalle de conflictos)
  *  - 500 → Exception (catch-all)
  */
 @RestControllerAdvice
@@ -106,6 +106,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
+    /* -------- 409: Violación de integridad referencial (FK en MySQL) ------ */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorRespuestaDto> manejarIntegridad(
+            org.springframework.dao.DataIntegrityViolationException ex,
+            HttpServletRequest request) {
+
+        log.warn("409 integridad referencial en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorRespuestaDto error = ErrorRespuestaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("No se puede eliminar")
+                .mensaje("No se puede eliminar este elemento porque tiene pedidos o ítems de carrito asociados.")
+                .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
     /* ----------------------- 409: Conflicto de negocio ------------------- */
     @ExceptionHandler(ConflictoNegocioException.class)
     public ResponseEntity<ErrorRespuestaDto> manejarConflicto(
@@ -120,6 +139,26 @@ public class GlobalExceptionHandler {
                 .error("Conflicto")
                 .mensaje(ex.getMessage())
                 .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /* --- 409: Conflicto de oferta activa vigente sobre el mismo producto -- */
+    @ExceptionHandler(OfertaConflictoException.class)
+    public ResponseEntity<ErrorConflictoOfertaDto> manejarConflictoOferta(
+            OfertaConflictoException ex,
+            HttpServletRequest request) {
+
+        log.warn("409 conflicto de oferta en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorConflictoOfertaDto error = ErrorConflictoOfertaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflicto de oferta")
+                .mensaje(ex.getMessage())
+                .ruta(request.getRequestURI())
+                .conflictos(ex.getConflictos())
                 .build();
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
@@ -163,6 +202,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<ErrorRespuestaDto> manejarCredencialesInvalidas(
+            org.springframework.security.authentication.BadCredentialsException ex,
+            HttpServletRequest request) {
+
+        log.warn("401 credenciales inválidas en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorRespuestaDto error = ErrorRespuestaDto.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error("Credenciales inválidas")
+                .mensaje("Correo o contraseña incorrectos.")
+                .ruta(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     /* ----------------------- 500: Catch-all ------------------------------ */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorRespuestaDto> manejarGenerico(
@@ -181,4 +238,5 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
+
 }
