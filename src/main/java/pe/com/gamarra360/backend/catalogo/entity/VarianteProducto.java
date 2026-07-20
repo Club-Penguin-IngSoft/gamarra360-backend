@@ -63,4 +63,10 @@ public class VarianteProducto {
 
     @Column(name = "imagen_url")
     private String imagenUrl;
+
+    @Column(name = "material", length = 100)
+    private String material;
+
+    @Column(name = "calidad", length = 100)
+    private String calidad;
 }

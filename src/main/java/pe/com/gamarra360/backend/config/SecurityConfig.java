@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/productos", "/api/v1/productos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/materiales", "/api/v1/materiales/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/distritos", "/api/v1/distritos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tarifas-envio/vendedor/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->

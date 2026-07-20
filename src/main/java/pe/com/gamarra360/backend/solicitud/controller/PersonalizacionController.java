@@ -10,6 +10,9 @@ import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionResumen;
 import pe.com.gamarra360.backend.solicitud.dto.ContraPropuestaRequest;
 import pe.com.gamarra360.backend.solicitud.dto.RespuestaPersonalizacionRequest;
+import pe.com.gamarra360.backend.solicitud.dto.MensajePersonalizacionRequest;
+import pe.com.gamarra360.backend.solicitud.dto.MensajePersonalizacionResponse;
+import pe.com.gamarra360.backend.solicitud.dto.MotivoCancelacionRequest;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
 import pe.com.gamarra360.backend.solicitud.service.PersonalizacionService;
 import jakarta.validation.Valid;
@@ -32,6 +35,7 @@ public class PersonalizacionController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Personalizacion>> listar() {
         log.info("GET /api/v1/personalizaciones");
         return ResponseEntity.ok(service.listar());
@@ -42,6 +46,7 @@ public class PersonalizacionController {
      * "Mis Personalizaciones" (lista resumida con datos de tienda/producto).
      */
     @GetMapping("/mis-personalizaciones")
+    @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<List<PersonalizacionResumen>> listarMisPersonalizaciones(Authentication auth) {
         Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("GET /api/v1/personalizaciones/mis-personalizaciones — cliente {}", clienteId);
@@ -49,6 +54,7 @@ public class PersonalizacionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Personalizacion> obtener(@PathVariable Long id) {
         log.info("GET /api/v1/personalizaciones/{}", id);
         return ResponseEntity.ok(service.obtener(id));
@@ -59,6 +65,7 @@ public class PersonalizacionController {
      * Valida que pertenezca al cliente autenticado.
      */
     @GetMapping("/{id}/detalle")
+    @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<PersonalizacionDetalleResponse> obtenerDetalle(@PathVariable Long id, Authentication auth) {
         Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("GET /api/v1/personalizaciones/{}/detalle — cliente {}", id, clienteId);
@@ -70,6 +77,7 @@ public class PersonalizacionController {
      * crea el {@code ItemPersonalizado} correspondiente.
      */
     @PatchMapping("/{id}/aceptar")
+    @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<PersonalizacionDetalleResponse> aceptar(@PathVariable Long id, Authentication auth) {
         Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("PATCH /api/v1/personalizaciones/{}/aceptar — cliente {}", id, clienteId);
@@ -78,6 +86,7 @@ public class PersonalizacionController {
 
     /** Rechaza la propuesta del vendedor (estado RESPONDIDA → RECHAZADA). */
     @PatchMapping("/{id}/rechazar")
+    @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<Void> rechazar(@PathVariable Long id, Authentication auth) {
         Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("PATCH /api/v1/personalizaciones/{}/rechazar — cliente {}", id, clienteId);
@@ -87,6 +96,7 @@ public class PersonalizacionController {
 
     /** Cancela la personalización desde el cliente (PENDIENTE o RESPONDIDA → RECHAZADA). */
     @PatchMapping("/{id}/cancelar")
+    @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<Void> cancelarPorCliente(@PathVariable Long id, Authentication auth) {
         Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("PATCH /api/v1/personalizaciones/{}/cancelar — cliente {}", id, clienteId);
@@ -96,6 +106,7 @@ public class PersonalizacionController {
 
     /** Envía una contrapropuesta del cliente (RESPONDIDA → PENDIENTE). */
     @PostMapping("/{id}/contra-proponer")
+    @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<PersonalizacionDetalleResponse> contraProponerCliente(
             @PathVariable Long id, @RequestBody ContraPropuestaRequest request, Authentication auth) {
         Integer clienteId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
@@ -134,7 +145,7 @@ public class PersonalizacionController {
     @PreAuthorize("hasRole('VENDEDOR')")
     public ResponseEntity<PersonalizacionComercianteDetalle> responder(
             @PathVariable Long id,
-            @RequestBody RespuestaPersonalizacionRequest request,
+            @Valid @RequestBody RespuestaPersonalizacionRequest request,
             Authentication auth) {
         Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("POST /api/v1/personalizaciones/{}/responder — vendedor {}", id, vendedorId);
@@ -144,10 +155,13 @@ public class PersonalizacionController {
     /** El comerciante cancela la personalización (PENDIENTE o RESPONDIDA → RECHAZADA). */
     @PatchMapping("/comerciante/{id}/cancelar")
     @PreAuthorize("hasRole('VENDEDOR')")
-    public ResponseEntity<Void> cancelarPorVendedor(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<Void> cancelarPorVendedor(
+            @PathVariable Long id,
+            @Valid @RequestBody MotivoCancelacionRequest request,
+            Authentication auth) {
         Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("PATCH /api/v1/personalizaciones/comerciante/{}/cancelar — vendedor {}", id, vendedorId);
-        service.cancelarPorVendedor(id, vendedorId);
+        service.cancelarPorVendedor(id, request.motivo(), vendedorId);
         return ResponseEntity.noContent().build();
     }
 
@@ -156,6 +170,7 @@ public class PersonalizacionController {
      * El clienteId se extrae del JWT — no se acepta en el body por seguridad.
      */
     @PostMapping
+    @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<Personalizacion> crear(
             @Valid @RequestBody PersonalizacionRequest request,
             Authentication auth) {
@@ -165,13 +180,32 @@ public class PersonalizacionController {
                 .body(service.crearSolicitud(request, clienteId));
     }
 
+    @GetMapping("/{id}/mensajes")
+    public ResponseEntity<List<MensajePersonalizacionResponse>> listarMensajes(
+            @PathVariable Long id, Authentication auth) {
+        Integer usuarioId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        return ResponseEntity.ok(service.listarMensajes(id, usuarioId));
+    }
+
+    @PostMapping("/{id}/mensajes")
+    public ResponseEntity<MensajePersonalizacionResponse> enviarMensaje(
+            @PathVariable Long id,
+            @Valid @RequestBody MensajePersonalizacionRequest request,
+            Authentication auth) {
+        Integer usuarioId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(service.enviarMensaje(id, request.mensaje(), usuarioId));
+    }
+
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Personalizacion> actualizar(@PathVariable Long id, @RequestBody Personalizacion request) {
         log.info("PUT /api/v1/personalizaciones/{}", id);
         return ResponseEntity.ok(service.actualizar(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         log.info("DELETE /api/v1/personalizaciones/{}", id);
         service.eliminar(id);

@@ -56,6 +56,8 @@ public class VarianteProductoServiceImpl extends AbstractCrudService<VariantePro
         if (request.getStock()          != null) existente.setStock(request.getStock());
         if (request.getSku()            != null) existente.setSku(request.getSku());
         if (request.getImagenUrl()      != null) existente.setImagenUrl(request.getImagenUrl());
+        if (request.getMaterial()       != null) existente.setMaterial(request.getMaterial());
+        if (request.getCalidad()        != null) existente.setCalidad(request.getCalidad());
 
         return varianteProductoRepository.save(existente);
     }

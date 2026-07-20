@@ -12,4 +12,6 @@ public class OfertaResumenDto {
     private String titulo;
     private TipoDescuento tipoDescuento;
     private Double valorDescuento;
+    private Integer cantidadMinima;
+
 }

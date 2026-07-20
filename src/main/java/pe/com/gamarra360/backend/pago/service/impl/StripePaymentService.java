@@ -15,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.com.gamarra360.backend.catalogo.entity.Oferta;
 import pe.com.gamarra360.backend.catalogo.entity.VarianteProducto;
 import pe.com.gamarra360.backend.catalogo.repository.VarianteProductoRepository;
+import pe.com.gamarra360.backend.configuracion.repository.ParametroSistemaRepository;
 import pe.com.gamarra360.backend.enums.EstadoPago;
 import pe.com.gamarra360.backend.logistica.repository.DistritoEnvioRepository;
+import pe.com.gamarra360.backend.logistica.service.TarifaEnvioService;
 import pe.com.gamarra360.backend.enums.EstadoPedido;
 import pe.com.gamarra360.backend.enums.TipoEntrega;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
@@ -55,6 +57,8 @@ public class StripePaymentService {
     private final CarritoPendienteRepository carritoPendienteRepository;
     private final CotizacionRepository       cotizacionRepository;
     private final DistritoEnvioRepository    distritoEnvioRepository;
+    private final TarifaEnvioService         tarifaEnvioService;
+    private final ParametroSistemaRepository parametroSistemaRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -73,7 +77,7 @@ public class StripePaymentService {
                     int cantidad = item.getCantidad() != null ? item.getCantidad() : 0;
                     if (item.getIdVarianteProducto() != null) {
                         // Variante normal: precio calculado server-side desde BD
-                        subtotalItems += resolverPrecioVariante(item.getIdVarianteProducto()) * cantidad;
+                        subtotalItems += resolverPrecioVariante(item.getIdVarianteProducto(), cantidad) * cantidad;
                     } else {
                         // Cotización / personalización: confiamos en el precio enviado por el frontend
                         subtotalItems += (item.getPrecio() != null ? item.getPrecio() : 0.0) * cantidad;
@@ -83,7 +87,8 @@ public class StripePaymentService {
                 if ("DELIVERY".equals(grupo.getTipoEntrega()) && grupo.getIdDistrito() != null) {
                     var distrito = distritoEnvioRepository.findById(grupo.getIdDistrito()).orElse(null);
                     if (distrito != null && distrito.getCostoEnvio() != null) {
-                        costoEntregaTotal += distrito.getCostoEnvio();
+                        costoEntregaTotal += tarifaEnvioService.resolver(
+                                grupo.getVendedorId(), grupo.getIdDistrito(), distrito.getCostoEnvio());
                     }
                 }
                 // RECOJO_TIENDA → costoEnvio = 0 (no suma)
@@ -294,7 +299,12 @@ public class StripePaymentService {
             }
 
             long subtotalCentimos = Math.round(pedido.getTotal() * 100);
-            long montoVendedor    = Math.round(subtotalCentimos * (1 - commissionRate));
+            double tasaComision = parametroSistemaRepository.findById("COMISION_PLATAFORMA")
+                    .map(p -> {
+                        try { return Double.parseDouble(p.getValor()); }
+                        catch (NumberFormatException ex) { return commissionRate; }
+                    }).orElse(commissionRate);
+            long montoVendedor    = Math.round(subtotalCentimos * (1 - tasaComision));
 
             try {
                 TransferCreateParams transferParams = TransferCreateParams.builder()
@@ -368,7 +378,7 @@ public class StripePaymentService {
         }
     }
 
-    private Double resolverPrecioVariante(Integer idVariante) {
+    private Double resolverPrecioVariante(Integer idVariante, int cantidad) {
         return varianteProductoRepository.findById(idVariante)
                 .map(v -> {
                     var producto = v.getProducto();
@@ -377,7 +387,7 @@ public class StripePaymentService {
                             : (producto != null ? producto.getPrecioBase() : null);
                     if (base == null) return 0.0;
                     Oferta oferta = producto != null ? producto.getOferta() : null;
-                    return esOfertaActiva(oferta) ? aplicarOferta(base, oferta) : base;
+                    return esOfertaActiva(oferta) && cantidadCumpleOferta(oferta, cantidad) ? aplicarOferta(base, oferta) : base;
                 })
                 .orElse(0.0);
     }
@@ -386,6 +396,10 @@ public class StripePaymentService {
         if (oferta == null || !Boolean.TRUE.equals(oferta.getActiva())) return false;
         LocalDateTime now = LocalDateTime.now();
         return !now.isBefore(oferta.getFechaInicio()) && !now.isAfter(oferta.getFechaFin());
+    }
+
+    private boolean cantidadCumpleOferta(Oferta oferta, int cantidad) {
+        return oferta.getCantidadMinima() == null || cantidad >= oferta.getCantidadMinima();
     }
 
     private double aplicarOferta(double base, Oferta oferta) {

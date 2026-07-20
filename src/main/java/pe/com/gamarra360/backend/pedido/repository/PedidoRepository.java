@@ -19,4 +19,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             LocalDateTime desde,
             LocalDateTime hasta
     );
+
+    List<Pedido> findByFechaBetweenOrderByFechaDesc(LocalDateTime desde, LocalDateTime hasta);
 }

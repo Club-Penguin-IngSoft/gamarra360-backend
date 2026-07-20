@@ -11,6 +11,7 @@ import java.util.List;
 
 public interface PedidoService extends CrudService<Pedido, Long> {
     void cancelar(Long id, Integer clienteId);
+    Pedido cancelarPorVendedor(Long id, Integer vendedorId);
 
     List<PedidoComercianteResumen> listarPorVendedor(Integer vendedorId);
 

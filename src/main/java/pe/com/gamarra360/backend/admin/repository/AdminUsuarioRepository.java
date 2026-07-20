@@ -33,6 +33,7 @@ public interface AdminUsuarioRepository extends JpaRepository<Usuario, Integer> 
     );
 
     List<Usuario> findTop10ByOrderByUsuarioIdDesc();
+    Optional<Usuario> findByEmail(String email);
     default Optional<Usuario> findByIdConHistorial(Integer id) {
         return findById(id);
     }

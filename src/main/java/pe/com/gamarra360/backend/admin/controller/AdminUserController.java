@@ -9,6 +9,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import pe.com.gamarra360.backend.admin.dto.*;
 import pe.com.gamarra360.backend.admin.service.AdminUserService;
+import pe.com.gamarra360.backend.usuario.dto.RegistroUsuarioRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 
 /**
  * CU-03: Control y Gestión Centralizada de Usuarios
@@ -67,6 +70,18 @@ public class AdminUserController {
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioDetalleDTO> obtenerUsuario(@PathVariable Integer id) {
         return ResponseEntity.ok(adminUserService.obtenerDetalle(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<UsuarioDetalleDTO> crearUsuario(@Valid @RequestBody RegistroUsuarioRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(adminUserService.crearUsuario(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UsuarioDetalleDTO> actualizarUsuario(
+            @PathVariable Integer id,
+            @Valid @RequestBody AdminUsuarioActualizarRequest request) {
+        return ResponseEntity.ok(adminUserService.actualizarUsuario(id, request));
     }
 
     @GetMapping("/dashboard")

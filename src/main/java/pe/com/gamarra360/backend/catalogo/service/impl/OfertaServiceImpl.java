@@ -125,6 +125,7 @@ public class OfertaServiceImpl implements OfertaService {
         oferta.setDescripcion(req.getDescripcion());
         oferta.setTipoDescuento(req.getTipoDescuento());
         oferta.setValorDescuento(req.getValorDescuento());
+        oferta.setCantidadMinima(req.getCantidadMinima() != null ? req.getCantidadMinima() : 1);
         oferta.setFechaInicio(req.getFechaInicio().atStartOfDay());
         // Regla 23:59:59: ajustar siempre al último segundo del día
         oferta.setFechaFin(req.getFechaFin().atTime(LocalTime.of(23, 59, 59)));
@@ -222,6 +223,7 @@ public class OfertaServiceImpl implements OfertaService {
         dto.setDescripcion(o.getDescripcion());
         dto.setTipoDescuento(o.getTipoDescuento());
         dto.setValorDescuento(o.getValorDescuento());
+        dto.setCantidadMinima(o.getCantidadMinima());
         dto.setFechaInicio(o.getFechaInicio());
         dto.setFechaFin(o.getFechaFin());
         dto.setActiva(o.getActiva());

@@ -28,4 +28,6 @@ public class VarianteProductoDto {
     private Double precioAjustado;
     private Boolean disponible;
     private String imagenUrl;
+    private String material;
+    private String calidad;
 }

@@ -11,6 +11,7 @@ import pe.com.gamarra360.backend.exception.DatosInvalidosException;
 import pe.com.gamarra360.backend.exception.RecursoNoEncontradoException;
 import pe.com.gamarra360.backend.logistica.entity.DistritoEnvio;
 import pe.com.gamarra360.backend.logistica.repository.DistritoEnvioRepository;
+import pe.com.gamarra360.backend.logistica.service.TarifaEnvioService;
 import pe.com.gamarra360.backend.pago.entity.OrdenPago;
 import pe.com.gamarra360.backend.pago.repository.OrdenPagoRepository;
 import pe.com.gamarra360.backend.pedido.entity.DetallePedido;
@@ -46,17 +47,19 @@ public class CheckoutService {
     private final DetallePedidoRepository detallePedidoRepository;
     private final DistritoEnvioRepository distritoEnvioRepository;
     private final VarianteProductoRepository varianteRepository;
+    private final TarifaEnvioService tarifaEnvioService;
 
     @Transactional
     public PedidoResponseDTO procesarCompra(PedidoRequestDTO dto, Integer clienteId) {
 
         // ── 1. Resolver precio real por variante desde BD (no confiar en dto.precio()) ──
-        final Map<Integer, Double> preciosVariante = new HashMap<>();
+        final Map<String, Double> preciosVariante = new HashMap<>();
         dto.items().forEach(item ->
-                preciosVariante.computeIfAbsent(item.idVarianteProducto(), this::resolverPrecioVariante));
+                preciosVariante.computeIfAbsent(clavePrecio(item.idVarianteProducto(), item.cantidad()),
+                        key -> resolverPrecioVariante(item.idVarianteProducto(), item.cantidad())));
 
         double subtotal = dto.items().stream()
-                .mapToDouble(i -> preciosVariante.get(i.idVarianteProducto()) * i.cantidad())
+                .mapToDouble(i -> preciosVariante.get(clavePrecio(i.idVarianteProducto(), i.cantidad())) * i.cantidad())
                 .sum();
 
         // ── 2. Resolver logística según tipo de entrega ───────────────────
@@ -72,7 +75,8 @@ public class CheckoutService {
             distrito = distritoEnvioRepository.findById(dto.idDistrito())
                     .orElseThrow(() -> new RecursoNoEncontradoException(
                             "Distrito no encontrado con id " + dto.idDistrito()));
-            costoEnvio = distrito.getCostoEnvio() != null ? distrito.getCostoEnvio() : 0.0;
+            double tarifaBase = distrito.getCostoEnvio() != null ? distrito.getCostoEnvio() : 0.0;
+            costoEnvio = tarifaEnvioService.resolver(dto.vendedorId(), dto.idDistrito(), tarifaBase);
             fechaEntregaEstimada = LocalDate.now().plusDays(2);
         } else {
             // RECOJO_TIENDA
@@ -119,7 +123,7 @@ public class CheckoutService {
             detalle.setPedidoId(pedidoId);
             detalle.setIdVarianteProducto(item.idVarianteProducto());
             detalle.setCantidad(item.cantidad());
-            detalle.setPrecio(preciosVariante.get(item.idVarianteProducto()));
+            detalle.setPrecio(preciosVariante.get(clavePrecio(item.idVarianteProducto(), item.cantidad())));
             detallePedidoRepository.save(detalle);
         });
         log.info("Pedido #{} — {} detalles guardados", pedidoId, dto.items().size());
@@ -143,7 +147,7 @@ public class CheckoutService {
      * usa precioAjustado si existe, si no precioBase del producto.
      * Aplica la oferta activa si la hay.
      */
-    private Double resolverPrecioVariante(Integer idVariante) {
+    private Double resolverPrecioVariante(Integer idVariante, int cantidad) {
         return varianteRepository.findById(idVariante)
                 .map(v -> {
                     var producto = v.getProducto();
@@ -152,7 +156,7 @@ public class CheckoutService {
                             : (producto != null ? producto.getPrecioBase() : null);
                     if (base == null) return 0.0;
                     Oferta oferta = producto != null ? producto.getOferta() : null;
-                    return esOfertaActiva(oferta) ? aplicarOferta(base, oferta) : base;
+                    return esOfertaActiva(oferta) && cantidadCumpleOferta(oferta, cantidad) ? aplicarOferta(base, oferta) : base;
                 })
                 .orElse(0.0);
     }
@@ -161,6 +165,14 @@ public class CheckoutService {
         if (oferta == null || !Boolean.TRUE.equals(oferta.getActiva())) return false;
         LocalDateTime now = LocalDateTime.now();
         return !now.isBefore(oferta.getFechaInicio()) && !now.isAfter(oferta.getFechaFin());
+    }
+
+    private String clavePrecio(Integer idVariante, int cantidad) {
+        return idVariante + ":" + cantidad;
+    }
+
+    private boolean cantidadCumpleOferta(Oferta oferta, int cantidad) {
+        return oferta.getCantidadMinima() == null || cantidad >= oferta.getCantidadMinima();
     }
 
     private double aplicarOferta(double base, Oferta oferta) {

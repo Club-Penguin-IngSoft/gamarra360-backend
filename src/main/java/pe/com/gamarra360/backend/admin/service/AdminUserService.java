@@ -13,6 +13,8 @@ import pe.com.gamarra360.backend.admin.repository.AdminUsuarioRepository;
 import pe.com.gamarra360.backend.pago.repository.OrdenPagoRepository;
 import pe.com.gamarra360.backend.usuario.entity.Usuario;
 import pe.com.gamarra360.backend.usuario.repository.ComercianteRepository;
+import pe.com.gamarra360.backend.usuario.service.AuthService;
+import pe.com.gamarra360.backend.usuario.dto.RegistroUsuarioRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,6 +40,7 @@ public class AdminUserService {
     private final ApplicationEventPublisher eventPublisher;
     private final OrdenPagoRepository ordenPagoRepository;
     private final ComercianteRepository comercianteRepository;
+    private final AuthService authService;
     private static final double COMISION_PLATAFORMA = 0.10;
     // -------------------------------------------------------------------------
     // RF-11: Listar y filtrar usuarios
@@ -79,6 +82,31 @@ public class AdminUserService {
     public UsuarioDetalleDTO obtenerDetalle(Integer id) {
         var usuario = usuarioRepository.findByIdConHistorial(id)
                 .orElseThrow();
+        return mapearDetalle(usuario);
+    }
+
+    @Transactional
+    public UsuarioDetalleDTO crearUsuario(RegistroUsuarioRequest request) {
+        var respuesta = authService.registrar(request);
+        return obtenerDetalle(respuesta.getUsuarioId());
+    }
+
+    @Transactional
+    public UsuarioDetalleDTO actualizarUsuario(Integer id, AdminUsuarioActualizarRequest request) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new UsuarioNoEncontradoException(id));
+        usuarioRepository.findByEmail(request.email()).ifPresent(otro -> {
+            if (!otro.getUsuarioId().equals(id)) {
+                throw new DatosInvalidosException("El correo ya pertenece a otro usuario.");
+            }
+        });
+        usuario.setNombres(request.nombres().trim());
+        usuario.setPrimerApellido(request.primerApellido().trim());
+        usuario.setSegundoApellido(request.segundoApellido());
+        usuario.setEmail(request.email().trim().toLowerCase());
+        usuario.setDni(request.dni());
+        usuario.setTelefono(request.telefono());
+        usuarioRepository.save(usuario);
         return mapearDetalle(usuario);
     }
 

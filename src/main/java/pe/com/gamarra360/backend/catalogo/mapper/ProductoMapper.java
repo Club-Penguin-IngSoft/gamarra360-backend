@@ -124,6 +124,9 @@ public class ProductoMapper {
                 .minimoStock(v.getMinimoStock())
                 .precioAjustado(v.getPrecioAjustado())
                 .disponible(v.getDisponible())
+                .imagenUrl(v.getImagenUrl())
+                .material(v.getMaterial())
+                .calidad(v.getCalidad())
                 .build();
     }
 

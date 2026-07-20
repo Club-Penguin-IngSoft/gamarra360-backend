@@ -12,6 +12,7 @@ public record PersonalizacionResumen(
         String nombreTienda,
         String fotoTienda,
         Integer detalleProductoId,
+        Integer productoId,
         String nombreProducto,
         String imagenUrl,
         String talla,

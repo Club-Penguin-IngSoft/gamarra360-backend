@@ -26,6 +26,9 @@ public class OfertaRequestDto {
     @Min(value = 0, message = "El valor de descuento no puede ser negativo")
     private Double valorDescuento;
 
+    @Min(value = 1, message = "La cantidad mínima debe ser mayor a cero")
+    private Integer cantidadMinima = 1;
+
     @NotNull(message = "La fecha de inicio es obligatoria")
     private LocalDate fechaInicio;
 

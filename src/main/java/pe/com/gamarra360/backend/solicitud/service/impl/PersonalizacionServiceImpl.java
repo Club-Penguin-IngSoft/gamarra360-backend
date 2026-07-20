@@ -20,6 +20,9 @@ import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.dto.PersonalizacionResumen;
 import pe.com.gamarra360.backend.solicitud.dto.ContraPropuestaRequest;
 import pe.com.gamarra360.backend.solicitud.dto.RespuestaPersonalizacionRequest;
+import pe.com.gamarra360.backend.solicitud.dto.MensajePersonalizacionResponse;
+import pe.com.gamarra360.backend.solicitud.entity.MensajePersonalizacion;
+import pe.com.gamarra360.backend.solicitud.repository.MensajePersonalizacionRepository;
 import pe.com.gamarra360.backend.solicitud.entity.ItemPersonalizado;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
 import pe.com.gamarra360.backend.solicitud.entity.RespuestaSolicitud;
@@ -50,6 +53,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
     private final PedidoRepository pedidoRepository;
     private final ItemPersonalizadoRepository itemPersonalizadoRepository;
     private final ClienteRepository clienteRepository;
+    private final MensajePersonalizacionRepository mensajePersonalizacionRepository;
 
     public PersonalizacionServiceImpl(NotificacionService notificacionService, PersonalizacionRepository repository,
                                        ComercianteRepository comercianteRepository,
@@ -57,7 +61,8 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                                        DetallePedidoRepository detallePedidoRepository,
                                        PedidoRepository pedidoRepository,
                                        ItemPersonalizadoRepository itemPersonalizadoRepository,
-                                       ClienteRepository clienteRepository) {
+                                       ClienteRepository clienteRepository,
+                                       MensajePersonalizacionRepository mensajePersonalizacionRepository) {
         super(repository, "Personalizacion");
         this.notificacionService = notificacionService;
         this.personalizacionRepository = repository;
@@ -67,6 +72,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         this.pedidoRepository = pedidoRepository;
         this.itemPersonalizadoRepository = itemPersonalizadoRepository;
         this.clienteRepository = clienteRepository;
+        this.mensajePersonalizacionRepository = mensajePersonalizacionRepository;
     }
 
     @Override
@@ -216,6 +222,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
             respuesta.setPrecioPropuesto(request.getPrecioPropuesto());
             respuesta.setAnotaciones(request.getAnotaciones());
             respuesta.setCondiciones(request.getCondiciones());
+            respuesta.setImagen(request.getImagen());
             respuestaSolicitudRepository.save(respuesta);
             p.marcarComoRespondida();
         } else {
@@ -244,7 +251,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
 
     @Override
     @Transactional
-    public void cancelarPorVendedor(Long id, Integer vendedorId) {
+    public void cancelarPorVendedor(Long id, String motivo, Integer vendedorId) {
         Personalizacion p = personalizacionRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Personalizacion", id));
         if (!vendedorId.equals(p.getVendedorId())) {
@@ -256,6 +263,14 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
         if (p.getEstado() == EstadoSolicitud.RECHAZADA) {
             throw new ConflictoNegocioException("La personalización ya está cancelada.");
         }
+        RespuestaSolicitud respuesta = respuestaSolicitudRepository.findByIdSolicitud(id)
+                .orElseGet(() -> {
+                    RespuestaSolicitud nueva = new RespuestaSolicitud();
+                    nueva.setIdSolicitud(id);
+                    return nueva;
+                });
+        respuesta.setComentario(motivo.trim());
+        respuestaSolicitudRepository.save(respuesta);
         p.cancelar();
         personalizacionRepository.save(p);
         log.info("Personalización {} cancelada por vendedor {}", id, vendedorId);
@@ -311,6 +326,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                 nombreTienda,
                 fotoTienda,
                 p.getDetalleProductoId(),
+                producto != null ? producto.getIdProducto() : null,
                 producto != null ? producto.getNombre() : null,
                 imagenPrincipal(producto),
                 v != null && v.getTalla() != null ? v.getTalla().getTalla() : null,
@@ -370,6 +386,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                 nombreTienda,
                 fotoTienda,
                 p.getDetalleProductoId(),
+                producto != null ? producto.getIdProducto() : null,
                 producto != null ? producto.getNombre() : null,
                 imagenPrincipal(producto),
                 v != null && v.getTalla() != null ? v.getTalla().getTalla() : null,
@@ -433,6 +450,7 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
                         respuesta.getComentario(),
                         respuesta.getCondiciones(),
                         respuesta.getAnotaciones(),
+                        respuesta.getImagen(),
                         respuesta.getFecha() != null ? respuesta.getFecha().toString() : null)
                 : null;
 
@@ -498,7 +516,51 @@ public class PersonalizacionServiceImpl extends AbstractCrudService<Personalizac
     }
 
     private Double calcularDescuentoUnitario(Producto producto, Double precioUnitario, Integer cantidad) {
-        return 0.0;
+        if (producto == null || precioUnitario == null || producto.getOferta() == null) return 0.0;
+        var oferta = producto.getOferta();
+        var ahora = java.time.LocalDateTime.now();
+        if (!Boolean.TRUE.equals(oferta.getActiva()) || ahora.isBefore(oferta.getFechaInicio()) || ahora.isAfter(oferta.getFechaFin())) return 0.0;
+        if (oferta.getCantidadMinima() != null && (cantidad == null || cantidad < oferta.getCantidadMinima())) return 0.0;
+        return switch (oferta.getTipoDescuento()) {
+            case PORCENTAJE -> precioUnitario * oferta.getValorDescuento() / 100.0;
+            case MONTO_FIJO -> Math.min(precioUnitario, oferta.getValorDescuento());
+        };
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MensajePersonalizacionResponse> listarMensajes(Long id, Integer usuarioId) {
+        Personalizacion p = validarParticipante(id, usuarioId);
+        return mensajePersonalizacionRepository.findByPersonalizacionIdOrderByFechaAsc(id).stream()
+                .map(m -> toMensaje(m, p))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public MensajePersonalizacionResponse enviarMensaje(Long id, String mensaje, Integer usuarioId) {
+        Personalizacion p = validarParticipante(id, usuarioId);
+        MensajePersonalizacion nuevo = new MensajePersonalizacion();
+        nuevo.setPersonalizacionId(id);
+        nuevo.setRemitenteId(usuarioId);
+        nuevo.setMensaje(mensaje.trim());
+        return toMensaje(mensajePersonalizacionRepository.save(nuevo), p);
+    }
+
+    private Personalizacion validarParticipante(Long id, Integer usuarioId) {
+        Personalizacion p = personalizacionRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Personalizacion", id));
+        if (!usuarioId.equals(p.getClienteId()) && !usuarioId.equals(p.getVendedorId())) {
+            throw new AccessDeniedException("No participas en esta personalización.");
+        }
+        return p;
+    }
+
+    private MensajePersonalizacionResponse toMensaje(MensajePersonalizacion m, Personalizacion p) {
+        String remitente = m.getRemitenteId().equals(p.getClienteId()) ? "CLIENTE" : "VENDEDOR";
+        return new MensajePersonalizacionResponse(
+                m.getId(), m.getRemitenteId(), remitente, m.getMensaje(),
+                m.getFecha() != null ? m.getFecha().toString() : null);
     }
 
     private String imagenPrincipal(Producto producto) {

@@ -28,18 +28,21 @@ public class PedidoController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Pedido>> listar() {
         log.info("GET /api/v1/pedidos");
         return ResponseEntity.ok(service.listar());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Pedido> obtener(@PathVariable Long id) {
         log.info("GET /api/v1/pedidos/{}", id);
         return ResponseEntity.ok(service.obtener(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Pedido> crear(@RequestBody Pedido request) {
         log.info("POST /api/v1/pedidos - tipoEntrega: {}, direccionEntrega: {}, total: {}",
                 request.getTipoEntrega(), request.getDireccionEntrega(), request.getTotal());
@@ -47,12 +50,14 @@ public class PedidoController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Pedido> actualizar(@PathVariable Long id, @RequestBody Pedido request) {
         log.info("PUT /api/v1/pedidos/{}", id);
         return ResponseEntity.ok(service.actualizar(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         log.info("DELETE /api/v1/pedidos/{}", id);
         service.eliminar(id);
@@ -74,6 +79,13 @@ public class PedidoController {
         Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
         log.info("PATCH /api/v1/pedidos/{}/avanzar-estado — vendedorId={}", id, vendedorId);
         return ResponseEntity.ok(service.avanzarEstado(id, vendedorId));
+    }
+
+    @PatchMapping("/{id}/cancelar-vendedor")
+    @PreAuthorize("hasRole('VENDEDOR')")
+    public ResponseEntity<Pedido> cancelarVendedor(@PathVariable Long id, Authentication auth) {
+        Integer vendedorId = ((UsuarioPrincipal) auth.getPrincipal()).getUsuarioId();
+        return ResponseEntity.ok(service.cancelarPorVendedor(id, vendedorId));
     }
 
     @GetMapping("/comerciante")

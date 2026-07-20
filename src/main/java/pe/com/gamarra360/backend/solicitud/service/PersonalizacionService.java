@@ -11,6 +11,7 @@ import pe.com.gamarra360.backend.solicitud.dto.RespuestaPersonalizacionRequest;
 import pe.com.gamarra360.backend.solicitud.entity.Personalizacion;
 
 import java.util.List;
+import pe.com.gamarra360.backend.solicitud.dto.MensajePersonalizacionResponse;
 
 public interface PersonalizacionService extends CrudService<Personalizacion, Long> {
 
@@ -45,8 +46,12 @@ public interface PersonalizacionService extends CrudService<Personalizacion, Lon
     void cancelarPorCliente(Long id, Integer clienteId);
 
     /** El comerciante cancela una solicitud que le pertenece, en estado PENDIENTE o RESPONDIDA. */
-    void cancelarPorVendedor(Long id, Integer vendedorId);
+    void cancelarPorVendedor(Long id, String motivo, Integer vendedorId);
 
     /** El cliente envía una contrapropuesta cuando la solicitud está en estado RESPONDIDA: vuelve a PENDIENTE. */
     PersonalizacionDetalleResponse contraProponerCliente(Long id, ContraPropuestaRequest request, Integer clienteId);
+
+    List<MensajePersonalizacionResponse> listarMensajes(Long id, Integer usuarioId);
+
+    MensajePersonalizacionResponse enviarMensaje(Long id, String mensaje, Integer usuarioId);
 }

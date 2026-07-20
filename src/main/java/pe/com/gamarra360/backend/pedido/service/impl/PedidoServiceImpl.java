@@ -81,6 +81,20 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
         actualizar(id, pedido);
     }
 
+    @Override
+    @Transactional
+    public Pedido cancelarPorVendedor(Long id, Integer vendedorId) {
+        Pedido pedido = obtener(id);
+        if (!vendedorId.equals(pedido.getVendedorId())) {
+            throw new AccessDeniedException("El pedido no pertenece al vendedor autenticado.");
+        }
+        if (pedido.getEstado() == EstadoPedido.ENTREGADO || pedido.getEstado() == EstadoPedido.CANCELADO) {
+            throw new ConflictoNegocioException("No se puede anular un pedido finalizado.");
+        }
+        pedido.cambiarEstado(EstadoPedido.CANCELADO);
+        return pedidoRepository.save(pedido);
+    }
+
     /* ── Comerciante: avanzar estado del pedido ─────────────────────────── */
 
     private static final java.util.Map<EstadoPedido, EstadoPedido> SIGUIENTE_ESTADO_DELIVERY = java.util.Map.of(
@@ -180,7 +194,7 @@ public class PedidoServiceImpl extends AbstractCrudService<Pedido, Long> impleme
 
         // 3. Pedidos completados (estado ENTREGADO)
         List<PedidoComercianteResumen> pedidosCompletados = pedidos.stream()
-                .filter(p -> p.getEstado() == EstadoPedido.RECIBIDO)
+                .filter(p -> p.getEstado() == EstadoPedido.ENTREGADO)
                 .map(this::toResumen)
                 .toList();
 

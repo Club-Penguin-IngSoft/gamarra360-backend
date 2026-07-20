@@ -223,20 +223,21 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         log.info("Login de usuario");
 
-        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new DatosInvalidosException("Credenciales invalidas."));
-
-        // Si el usuario se registró con Google, no puede usar login con contraseña
-        if (ProveedorAuth.GOOGLE.equals(usuario.getProveedorAuth())) {
-            log.info("Intento de login LOCAL para cuenta registrada con Google: {}", request.getEmail());
-            throw new DatosInvalidosException("Este correo está registrado con Google. Inicia sesión con el botón de Google.");
-        }
-
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasenha()));
         } catch (org.springframework.security.authentication.DisabledException e) {
+            Usuario usuarioDesactivado = usuarioRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Credenciales invalidas."));
             log.info("USUARIO DESACTIVADO intentó iniciar sesión: {}", request.getEmail());
-            return new AuthResponse(null, usuario.getUsuarioId(), usuario.getEmail(), usuario.getRol().name(), false, "DESACTIVADO");
+            return new AuthResponse(null, usuarioDesactivado.getUsuarioId(), usuarioDesactivado.getEmail(), usuarioDesactivado.getRol().name(), false, "DESACTIVADO");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Credenciales invalidas."));
+
+        if (ProveedorAuth.GOOGLE.equals(usuario.getProveedorAuth())) {
+            log.info("Intento de login LOCAL para cuenta registrada con Google: {}", request.getEmail());
+            throw new DatosInvalidosException("Este correo está registrado con Google. Inicia sesión con el botón de Google.");
         }
 
         // Verificar estado si es VENDEDOR

@@ -17,6 +17,7 @@ public class OfertaResponseDto {
     private String descripcion;
     private TipoDescuento tipoDescuento;
     private Double valorDescuento;
+    private Integer cantidadMinima;
     private LocalDateTime fechaInicio;
     private LocalDateTime fechaFin;
     private Boolean activa;

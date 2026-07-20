@@ -36,6 +36,9 @@ public class Oferta {
     @Column(name = "valor_descuento", nullable = false)
     private Double valorDescuento;
 
+    @Column(name = "cantidad_minima", nullable = false)
+    private Integer cantidadMinima = 1;
+
     @Column(name = "fecha_inicio", nullable = false)
     private LocalDateTime fechaInicio;
 

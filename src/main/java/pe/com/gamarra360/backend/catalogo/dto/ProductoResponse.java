@@ -68,5 +68,7 @@ public class ProductoResponse {
         private String color;
         private String colorHex;
         private String imagenUrl;
+        private String material;
+        private String calidad;
     }
 }

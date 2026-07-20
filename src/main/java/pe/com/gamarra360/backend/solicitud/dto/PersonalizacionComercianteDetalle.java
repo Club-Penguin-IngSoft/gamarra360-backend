@@ -30,6 +30,7 @@ public record PersonalizacionComercianteDetalle(
             String comentario,
             String condiciones,
             String anotaciones,
+            String imagen,
             String fecha
     ) {}
 }

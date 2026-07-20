@@ -513,13 +513,14 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
         r.setPrecioBase(p.getPrecioBase());
 
         Oferta oferta = p.getOferta();
-        if (esOfertaActiva(oferta)) {
+        if (esOfertaActiva(oferta) && cantidadCumpleOferta(oferta, 1)) {
             r.setPrecioFinal(calcularPrecioConOferta(p.getPrecioBase(), oferta));
-            r.setOferta(new OfertaResumenDto(oferta.getTitulo(), oferta.getTipoDescuento(), oferta.getValorDescuento()));
         } else {
             r.setPrecioFinal(p.getPrecioBase());
-            r.setOferta(null);
         }
+        r.setOferta(esOfertaActiva(oferta)
+                ? new OfertaResumenDto(oferta.getTitulo(), oferta.getTipoDescuento(), oferta.getValorDescuento(), oferta.getCantidadMinima())
+                : null);
 
         r.setEsPersonalizable(p.getEsPersonalizable());
         r.setActivo(p.getActivo());
@@ -587,12 +588,18 @@ public class ProductoServiceImpl extends AbstractCrudService<Producto, Integer> 
             d.setColorHex(v.getColor() != null ? v.getColor().getCodHex() : null);
             d.setImagenUrl(v.getImagenUrl());
             Double baseVariante = v.getPrecioAjustado() != null ? v.getPrecioAjustado() : p.getPrecioBase();
-            d.setPrecioEfectivo(esOfertaActiva(oferta)
+            d.setMaterial(v.getMaterial());
+            d.setCalidad(v.getCalidad());
+            d.setPrecioEfectivo(esOfertaActiva(oferta) && cantidadCumpleOferta(oferta, 1)
                     ? calcularPrecioConOferta(baseVariante, oferta)
                     : baseVariante);
             return d;
         }).collect(Collectors.toList()));
 
         return r;
+    }
+
+    private boolean cantidadCumpleOferta(Oferta oferta, int cantidad) {
+        return oferta == null || oferta.getCantidadMinima() == null || cantidad >= oferta.getCantidadMinima();
     }
 }
